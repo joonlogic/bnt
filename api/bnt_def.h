@@ -1,9 +1,14 @@
 /********************************************************************
- *  FILE   : bnt_def.c
- *  Author : joon
- *  Content : definitions 
+ * bnt_def.h : Definitions for BNT 
+ *
+ * Copyright (c) 2018  TheFrons, Inc.
+ * Copyright (c) 2018  Joon Kim <joonlogic@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License.
+ *
  ********************************************************************/
-
 #ifndef BNT_DEF_H
 #define BNT_DEF_H
 
@@ -47,7 +52,9 @@
         return ret; \
     }
 
-////////////// SPI MESSAGE HEADER DEFINITIONS /////////
+/////
+///// SPI MESSAGE HEADER DEFINITIONS 
+/////
 #define MAX_LENGTH_BNT_SPI                 64  //TODO: should be optimized.
 #define LENGTH_MSG_HEADER                  3
 
@@ -73,5 +80,110 @@
 #define MAX_COUNT_REG_ACCESS               23 //means 46 bytes
 
 #define MAX_SPI_CS                         3
+
+
+/////
+///// BNT registers
+/////
+
+typedef enum {
+    IDR = 0x00,   // (RO) Chip ID Register
+    SSR = 0x01,   // (RW) Status Set Register
+    PSR = 0x02,   // (RW) PLL Set Register
+    IER = 0x03,   // (RW) Interrupt Enable Register
+    ISR = 0x04,   // (RW) Interrupt Status Register
+    SNR = 0x05,   // (RO) Status Notification Register
+    HVR0 = 0x06,   // (RW) Hash Value Set Register 0
+    HVR1 = 0x07,   // (RW) Hash Value Set Register 1
+    HVR2 = 0x08,   // (RW) Hash Value Set Register 2
+    HVR3 = 0x09,   // (RW) Hash Value Set Register 3
+    HVR4 = 0x0a,   // (RW) Hash Value Set Register 4
+    HVR5 = 0x0b,   // (RW) Hash Value Set Register 5
+    HVR6 = 0x0c,   // (RW) Hash Value Set Register 6
+    HVR7 = 0x0d,   // (RW) Hash Value Set Register 7
+    HVR8 = 0x0e,   // (RW) Hash Value Set Register 8
+    HVR9 = 0x0f,   // (RW) Hash Value Set Register 9
+    HVR10 = 0x10,   // (RW) Hash Value Set Register 10
+    HVR11 = 0x11,   // (RW) Hash Value Set Register 11
+    HVR12 = 0x12,   // (RW) Hash Value Set Register 12
+    HVR13 = 0x13,   // (RW) Hash Value Set Register 13
+    HVR14 = 0x14,   // (RW) Hash Value Set Register 14
+    HVR15 = 0x15,   // (RW) Hash Value Set Register 15
+    HVR16 = 0x16,   // (RW) Hash Value Set Register 16
+    HVR17 = 0x17,   // (RW) Hash Value Set Register 17
+    HVR18 = 0x18,   // (RW) Hash Value Set Register 18
+    HVR19 = 0x19,   // (RW) Hash Value Set Register 19
+    HVR20 = 0x20,   // (RW) Hash Value Set Register 20
+    HVR21 = 0x21,   // (RW) Hash Value Set Register 21
+    HVR22 = 0x22,   // (RW) Hash Value Set Register 22
+
+    MRR0 = 0x1D,   // (RO) Mining Result Register 0
+    MRR1 = 0x1E,   // (RO) Mining Result Register 1
+    MRR2 = 0x1F,   // (RO) Mining Result Register 2
+    MRR3 = 0x20,   // (RO) Mining Result Register 3
+    MRR4 = 0x21,   // (RO) Mining Result Register 4
+    MRR5 = 0x22,   // (RO) Mining Result Register 5
+    MRR6 = 0x23,   // (RO) Mining Result Register 6
+    MRR7 = 0x24,   // (RO) Mining Result Register 7
+    MRR8 = 0x25,   // (RO) Mining Result Register 8
+    MRR9 = 0x26,   // (RO) Mining Result Register 9
+    MRR10 = 0x27,   // (RO) Mining Result Register 10
+    MRR11 = 0x28,   // (RO) Mining Result Register 11
+    MRR12 = 0x29,   // (RO) Mining Result Register 12
+    MRR13 = 0x2a,   // (RO) Mining Result Register 13
+    MRR14 = 0x2b,   // (RO) Mining Result Register 14
+    MRR15 = 0x2c,   // (RO) Mining Result Register 15
+    MRR16 = 0x2d,   // (RO) Mining Result Register 16
+    TMR0 = 0x2e,   // (RW) Test Nonce Value Register 0
+    TMR1 = 0x2f,   // (RW) Test Nonce Value Register 1
+} bnt_register_t;
+
+//I_ means offset bit
+//S_ means size for the field
+#define MASKFOR_LENGTH(LEN)                 ((1<<(LEN))-1)
+
+#define I_IDR_SIGNATURE                     7
+#define S_IDR_SIGNATURE                     9
+#define I_IDR_CHIPID                        0
+#define S_IDR_CHIPID                        6
+
+#define I_SSR_SOFTRESET                     0
+#define S_SSR_SOFTRESET                     1
+#define I_SSR_ADMINMODE                     1
+#define S_SSR_ADMINMODE                     1
+#define I_SSR_DATABITS                      2
+#define S_SSR_DATABITS                      1
+#define I_SSR_MASK                          8
+#define S_SSR_MASK                          8
+
+#define I_PSR_PLL                           0
+#define S_PSR_PLL                           8
+
+#define I_IER_MINED                         0
+#define S_IER_MINED                         1
+#define I_IER_OVERHEAT                      1
+#define S_IER_OVERHEAT                      1
+#define I_IER_RSLT_FIFO_ALMOST_FULL         2
+#define S_IER_RSLT_FIFO_ALMOST_FULL         1
+#define I_IER_BHV_FIFO_FULL                 3
+#define S_IER_BHV_FIFO_FULL                 1
+
+#define I_ISR_MINED                         0
+#define S_ISR_MINED                         1
+#define I_ISR_OVERHEAT                      1
+#define S_ISR_OVERHEAT                      1
+#define I_ISR_RSLT_FIFO_ALMOST_FULL         2
+#define S_ISR_RSLT_FIFO_ALMOST_FULL         1
+#define I_ISR_BHV_FIFO_FULL                 3
+#define S_ISR_BHV_FIFO_FULL                 1
+
+#define I_SNR_TEMPERATURE                   0
+#define S_SNR_TEMPERATURE                   9
+
+#define I_HVR0_HASHID                       0
+#define S_HVR0_HASHID                       8
+
+#define I_MRR0_HASHID                       0
+#define S_MRR0_HASHID                       8
 
 #endif //BNT_DEF_H

@@ -1,8 +1,15 @@
 /********************************************************************
- *  FILE   : bnt_api.c
- *  Author : joon
- *  Content : API collections 
+ * bnt_api.c : Application Interface functions
+ *
+ * Copyright (c) 2018  TheFrons, Inc.
+ * Copyright (c) 2018  Joon Kim <joonlogic@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License.
+ *
  ********************************************************************/
+
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
