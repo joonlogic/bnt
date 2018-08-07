@@ -186,4 +186,47 @@ typedef enum {
 #define I_MRR0_HASHID                       0
 #define S_MRR0_HASHID                       8
 
+
+/////
+///// BNT structs
+/////
+
+#pragma pack(1)
+
+#define SIZE_BNT_HASH_TUPLE                 46 // Byte = WorkId + midstate + ...
+#define SIZE_BNT_HASH_TUPLE_CORE            44 // Byte = midstate + ...
+#define COUNT_BNT_HASH_TUPLE                23 // Short
+
+typedef struct bnt_spi_header {
+	unsigned char cmdid;
+	unsigned char addr;
+	unsigned char length;
+	unsigned char data[0];
+} T_BntAccess;
+
+typedef struct bnt_block_header {
+	unsigned short workid;  //BNT internal
+	unsigned int version;
+	unsigned char prev_hash[32];
+	unsigned char merkle[32];
+	unsigned char ntime[4];
+	unsigned char target[4];
+	unsigned char nonce[4];
+	unsigned char chipid;
+	int fd;
+} T_BlockHeader;
+
+typedef struct bnt_hash_tuple {
+	unsigned short workid;  //BNT internal
+	unsigned char midstate[32];
+	unsigned char merkle[4];
+	unsigned char ntime[4];
+	unsigned char target[4];
+	unsigned char nonce[4];
+	unsigned char post_hash[32];
+	unsigned char chipid;
+	int fd;
+	unsigned char isbcast;
+} T_BntHash;
+
 #endif //BNT_DEF_H

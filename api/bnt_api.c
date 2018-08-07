@@ -29,13 +29,13 @@ regwrite(
 	BNT_CHECK_NULL(buf, -1);
 
 	unsigned char txbuf[MAX_LENGTH_BNT_SPI] = {0,};
-	unsigned char* ptr = txbuf;
+	T_BntAccess* access = (T_BntAccess*)txbuf;
 	int ret = 0;
 
-	*ptr++ = HEADER_FIRST(CMD_WRITE, isbcast, chipid);
-	*ptr++ = HEADER_SECOND(regaddr);
-	*ptr++ = HEADER_THIRD(wrbytes);
-	memcpy(ptr, buf, wrbytes);
+	access->cmdid = HEADER_FIRST(CMD_WRITE, isbcast, chipid);
+	access->addr = HEADER_SECOND(regaddr);
+	access->length = HEADER_THIRD(wrbytes);
+	memcpy(access->data, buf, wrbytes);
 
 	ret = do_write(fd, txbuf, LENGTH_SPI_MSG(wrbytes));
 	return ret - LENGTH_MSG_HEADER;
@@ -48,20 +48,20 @@ regread(
 		int regaddr,
 		void* buf,
 		int rdbytes
-	   )
+		)
 {
 	BNT_CHECK_NULL(buf, -1);
 
 	unsigned char txbuf[MAX_LENGTH_BNT_SPI] = {0,};
 	unsigned char rxbuf[MAX_LENGTH_BNT_SPI] = {0,};
+	T_BntAccess* access = (T_BntAccess*)txbuf;
 	int txlen = 0;
 	int rxlen = 0;
-	unsigned char* ptr = txbuf;
 	int ret = 0;
 
-	*ptr++ = HEADER_FIRST(CMD_READ, CMD_UNICAST, chipid);
-	*ptr++ = HEADER_SECOND(regaddr);
-	*ptr++ = HEADER_THIRD(rdbytes);
+	access->cmdid = HEADER_FIRST(CMD_READ, CMD_UNICAST, chipid);
+	access->addr = HEADER_SECOND(regaddr);
+	access->length = HEADER_THIRD(rdbytes);
 
 	txlen = LENGTH_SPI_MSG(0);
 	rxlen = rdbytes;
@@ -72,4 +72,30 @@ regread(
 	memcpy(buf, rxbuf, rxlen);
 	return ret;
 }
+
+int
+request_hash( 
+		int fd,
+		T_BntHash* bnthash
+		)
+{
+	BNT_CHECK_NULL(bnthash, -1);
+
+	unsigned char txbuf[MAX_LENGTH_BNT_SPI] = {0,};
+	T_BntAccess* access = (T_BntAccess*)txbuf;
+	int ret = 0;
+
+	access->cmdid = HEADER_FIRST(CMD_WRITE, bnthash->isbcast, bnthash->chipid);
+	access->addr = HEADER_SECOND(HVR0);
+	access->length = HEADER_THIRD(COUNT_BNT_HASH_TUPLE);
+	memcpy(access->data, &bnthash->workid, SIZE_BNT_HASH_TUPLE_CORE);
+
+	ret = do_write(fd, txbuf, LENGTH_SPI_MSG(SIZE_BNT_HASH_TUPLE));
+	return ret - LENGTH_MSG_HEADER;
+}
+
+
+
+
+		
 
