@@ -46,14 +46,13 @@ regread(
 		int fd,
 		int chipid,
 		int regaddr,
-		void* buf,
+		void* rxbuf,
 		int rdbytes
 		)
 {
 	BNT_CHECK_NULL(buf, -1);
 
 	unsigned char txbuf[MAX_LENGTH_BNT_SPI] = {0,};
-	unsigned char rxbuf[MAX_LENGTH_BNT_SPI] = {0,};
 	T_BntAccess* access = (T_BntAccess*)txbuf;
 	int txlen = 0;
 	int rxlen = 0;
@@ -66,10 +65,9 @@ regread(
 	txlen = LENGTH_SPI_MSG(0);
 	rxlen = rdbytes;
 
-	ret = do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen);
+	ret = do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen); //TODO: compare with do_read
 	BNT_CHECK_TRUE(ret >= 0, ret);
 
-	memcpy(buf, rxbuf, rxlen);
 	return ret;
 }
 
@@ -81,21 +79,37 @@ request_hash(
 {
 	BNT_CHECK_NULL(bnthash, -1);
 
-	unsigned char txbuf[MAX_LENGTH_BNT_SPI] = {0,};
-	T_BntAccess* access = (T_BntAccess*)txbuf;
-	int ret = 0;
-
-	access->cmdid = HEADER_FIRST(CMD_WRITE, bnthash->isbcast, bnthash->chipid);
-	access->addr = HEADER_SECOND(HVR0);
-	access->length = HEADER_THIRD(COUNT_BNT_HASH_TUPLE);
-	memcpy(access->data, &bnthash->workid, SIZE_BNT_HASH_TUPLE_CORE);
-
-	ret = do_write(fd, txbuf, LENGTH_SPI_MSG(SIZE_BNT_HASH_TUPLE));
-	return ret - LENGTH_MSG_HEADER;
+	return regwrite( fd, bnthash->chipid, HVR0, &bnthash->workid, 
+			SIZE_BNT_HASH_TUPLE, bnthash->isbcast );
 }
 
+int
+hello_there(
+		int fd,
+		int chipid
+		)
+{
+	unsigned short idr = 0;
+	regread(fd, chipid, IDR, &idr, SIZE_REG_DATA_BYTE);
 
+	BNT_INFO("%s: chipid %d -- IDR %04X\n", __func__, chipid, idr); 
+	
+	return (idr == ( IDR_SIGNATURE << I_IDR_SIGNATURE ) | chipid) ? 
+		TRUE : FALSE;
+}
 
+int
+get_lastone(
+		int fd
+		)
+{
+	int chipid = 0;
+	int ret = FALSE;
 
-		
+	do {
+		ret = hello_there(fd, chipid);
+		if(chipid++ == MAX_CHIPID) break;
+	} while(ret == TRUE);
 
+	return chipid-1;
+}

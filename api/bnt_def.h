@@ -81,10 +81,16 @@
 
 #define MAX_SPI_CS                         3
 
+/////
+///// BNT system
+/////
+#define MAX_CHIPID                         0x3F
+
 
 /////
 ///// BNT registers
 /////
+#define SIZE_REG_DATA_BYTE                 2 
 
 typedef enum {
     IDR = 0x00,   // (RO) Chip ID Register
@@ -139,52 +145,53 @@ typedef enum {
 } bnt_register_t;
 
 //I_ means offset bit
-//S_ means size for the field
+//V_ means valid size for the field
 #define MASKFOR_LENGTH(LEN)                 ((1<<(LEN))-1)
 
+#define IDR_SIGNATURE                       0x1AB //427
 #define I_IDR_SIGNATURE                     7
-#define S_IDR_SIGNATURE                     9
+#define V_IDR_SIGNATURE                     9
 #define I_IDR_CHIPID                        0
-#define S_IDR_CHIPID                        6
+#define V_IDR_CHIPID                        6
 
 #define I_SSR_SOFTRESET                     0
-#define S_SSR_SOFTRESET                     1
+#define V_SSR_SOFTRESET                     1
 #define I_SSR_ADMINMODE                     1
-#define S_SSR_ADMINMODE                     1
+#define V_SSR_ADMINMODE                     1
 #define I_SSR_DATABITS                      2
-#define S_SSR_DATABITS                      1
+#define V_SSR_DATABITS                      1
 #define I_SSR_MASK                          8
-#define S_SSR_MASK                          8
+#define V_SSR_MASK                          8
 
 #define I_PSR_PLL                           0
-#define S_PSR_PLL                           8
+#define V_PSR_PLL                           8
 
 #define I_IER_MINED                         0
-#define S_IER_MINED                         1
+#define V_IER_MINED                         1
 #define I_IER_OVERHEAT                      1
-#define S_IER_OVERHEAT                      1
+#define V_IER_OVERHEAT                      1
 #define I_IER_RSLT_FIFO_ALMOST_FULL         2
-#define S_IER_RSLT_FIFO_ALMOST_FULL         1
+#define V_IER_RSLT_FIFO_ALMOST_FULL         1
 #define I_IER_BHV_FIFO_FULL                 3
-#define S_IER_BHV_FIFO_FULL                 1
+#define V_IER_BHV_FIFO_FULL                 1
 
 #define I_ISR_MINED                         0
-#define S_ISR_MINED                         1
+#define V_ISR_MINED                         1
 #define I_ISR_OVERHEAT                      1
-#define S_ISR_OVERHEAT                      1
+#define V_ISR_OVERHEAT                      1
 #define I_ISR_RSLT_FIFO_ALMOST_FULL         2
-#define S_ISR_RSLT_FIFO_ALMOST_FULL         1
+#define V_ISR_RSLT_FIFO_ALMOST_FULL         1
 #define I_ISR_BHV_FIFO_FULL                 3
-#define S_ISR_BHV_FIFO_FULL                 1
+#define V_ISR_BHV_FIFO_FULL                 1
 
 #define I_SNR_TEMPERATURE                   0
-#define S_SNR_TEMPERATURE                   9
+#define V_SNR_TEMPERATURE                   9
 
 #define I_HVR0_HASHID                       0
-#define S_HVR0_HASHID                       8
+#define V_HVR0_HASHID                       8
 
 #define I_MRR0_HASHID                       0
-#define S_MRR0_HASHID                       8
+#define V_MRR0_HASHID                       8
 
 
 /////
