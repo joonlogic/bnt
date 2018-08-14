@@ -1,5 +1,6 @@
 /********************************************************************
  * bnt_spi.c : SPI driver interface with spidev
+ *             GPIO IRQ interface with sysfs
  *
  * Copyright (c) 2018  TheFrons, Inc.
  * Copyright (c) 2018  Joon Kim <joonlogic@gmail.com>
@@ -12,6 +13,8 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -106,5 +109,110 @@ do_spi_tx_rx(
 	return ret;
 }
 
+//////////////////
+//// GPIO 
+/////////////////
 
+#define STR_GPIO_SYS            "/sys/class/gpio"
+#define STR_GPIO_EXPORT         "/export"
+#define STR_GPIO_EXPORT_VAL     "%d"
+#define STR_GPIO_UNEXPORT       "/unexport"
+#define STR_GPIO_NUMBER         "/gpio%d"
+#define STR_GPIO_DIR            "/direction"
+#define STR_GPIO_DIR_READ       "in"
+#define STR_GPIO_EDGE           "/edge"
+#define STR_GPIO_EDGE_RISING    "rising"
+#define STR_GPIO_ACT_LOW        "/active_low"
+#define STR_GPIO_ACT_LOW_FALSE  "0"
+#define STR_GPIO_VALUE          "/value"
+
+int
+do_config_gpio_irq(
+		int gpiopin
+		)
+{
+	char strgpio[64]={0,};
+	struct stat sb={0,};
+
+	int fd = 0;
+	int ret = 0;
+
+	//check already existence
+	sprintf(strgpio, STR_GPIO_SYS STR_GPIO_NUMBER, gpiopin);
+	if(stat(strgpio, &sb) == 0) { //already exist
+		BNT_CHECK_TRUE(S_ISDIR(sb.st_mode), -1);
+	}
+	else {
+		//enable gpio
+		char strexp[64]={0,};
+		sprintf(strexp, STR_GPIO_SYS STR_GPIO_EXPORT);
+		fd = open(strexp, O_WRONLY | O_SYNC);
+		BNT_CHECK_TRUE(fd >= 0, -1);
+		
+		char strgpiopin[8]={0,};
+		sprintf(strgpiopin, STR_GPIO_EXPORT_VAL, gpiopin);
+		ret = write(fd, strgpiopin, (size_t)strlen(strgpiopin));
+		if(ret != (ssize_t)strlen(strgpiopin)) {
+			fprintf(stderr, "%s: failed to write %s to %s. (err %d)\n", 
+					__func__, strgpiopin, strexp, ret<0 ? errno:ret);
+			close(fd);
+			return -1;
+		}
+		close(fd);
+	}
+
+	//direction
+	char strdir[64]={0,};
+	sprintf(strdir, STR_GPIO_SYS STR_GPIO_NUMBER STR_GPIO_DIR, gpiopin);
+	fd = open(strdir, O_WRONLY | O_SYNC);
+	BNT_CHECK_TRUE(fd >= 0, -1);
+
+	ret = write(fd, STR_GPIO_DIR_READ, (size_t)strlen(STR_GPIO_DIR_READ));
+	if(ret != (ssize_t)strlen(STR_GPIO_DIR_READ)) {
+		fprintf(stderr, "%s: failed to write %s to %s. (err %d)\n", 
+				__func__, STR_GPIO_DIR_READ, strdir, ret<0 ? errno:ret);
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+	//edge
+	char stredge[64]={0,};
+	sprintf(stredge, STR_GPIO_SYS STR_GPIO_NUMBER STR_GPIO_EDGE, gpiopin);
+	fd = open(stredge, O_WRONLY | O_SYNC);
+	BNT_CHECK_TRUE(fd >= 0, -1);
+
+	ret = write(fd, STR_GPIO_EDGE_RISING, (size_t)strlen(STR_GPIO_EDGE_RISING));
+	if(ret != (ssize_t)strlen(STR_GPIO_EDGE_RISING)) {
+		fprintf(stderr, "%s: failed to write %s to %s. (err %d)\n", 
+				__func__, STR_GPIO_EDGE_RISING, stredge, ret<0 ? errno:ret);
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+	//active_low
+	char stract[64]={0,};
+	sprintf(stract, STR_GPIO_SYS STR_GPIO_NUMBER STR_GPIO_ACT_LOW, gpiopin);
+	fd = open(stract, O_WRONLY | O_SYNC);
+	BNT_CHECK_TRUE(fd >= 0, -1);
+
+	ret = write(fd, STR_GPIO_ACT_LOW_FALSE, (size_t)strlen(STR_GPIO_ACT_LOW_FALSE));
+	if(ret != (ssize_t)strlen(STR_GPIO_ACT_LOW_FALSE)) {
+		fprintf(stderr, "%s: failed to write %s to %s. (err %d)\n", 
+				__func__, STR_GPIO_ACT_LOW_FALSE, stract, ret<0 ? errno:ret);
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+
+	//value
+	char strval[64]={0,};
+	sprintf(strval, STR_GPIO_SYS STR_GPIO_NUMBER STR_GPIO_VALUE, gpiopin);
+	fd = open(strval, O_RDONLY);
+	BNT_CHECK_TRUE(fd >= 0, -1);
+
+	return fd; //fd of "/sys/class/gpio/gpio(n)/value"
+}
 

@@ -50,7 +50,7 @@ regread(
 		int rdbytes
 		)
 {
-	BNT_CHECK_NULL(buf, -1);
+	BNT_CHECK_NULL(rxbuf, -1);
 
 	unsigned char txbuf[MAX_LENGTH_BNT_SPI] = {0,};
 	T_BntAccess* access = (T_BntAccess*)txbuf;
@@ -92,9 +92,9 @@ hello_there(
 	unsigned short idr = 0;
 	regread(fd, chipid, IDR, &idr, SIZE_REG_DATA_BYTE);
 
-	BNT_INFO("%s: chipid %d -- IDR %04X\n", __func__, chipid, idr); 
+	BNT_INFO(("%s: chipid %d -- IDR %04X\n", __func__, chipid, idr)); 
 	
-	return (idr == ( IDR_SIGNATURE << I_IDR_SIGNATURE ) | chipid) ? 
+	return (idr == ((IDR_SIGNATURE << I_IDR_SIGNATURE) | chipid)) ? 
 		TRUE : FALSE;
 }
 
