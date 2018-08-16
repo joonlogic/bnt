@@ -5,6 +5,7 @@ CC = gcc -g
 
 TARGET =  bnt_access
 TARGET +=  spidev_test
+TARGET += bnt_gpioint
 
 ifeq ($(BNT_LIBDIR),)
     BNT_LIBDIR = ../api
@@ -26,6 +27,9 @@ LFLAGS +=
 all: $(TARGET)
 
 bnt_access: bnt_access.c $(BNT_LIB)
+	$(CC) -Wall $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
+
+bnt_gpioint: bnt_gpioint.c $(BNT_LIB)
 	$(CC) -Wall $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
 
 spitest: spidev_test.c 

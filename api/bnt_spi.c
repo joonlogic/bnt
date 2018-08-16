@@ -126,30 +126,29 @@ do_spi_tx_rx(
 #define STR_GPIO_ACT_LOW_FALSE  "0"
 #define STR_GPIO_VALUE          "/value"
 
+/* 
+ * RETURN : fd when open "/sys/class/gpio/gpio(n)/value"
+ */
 int
 do_config_gpio_irq(
-		int gpiopin
+		int gpiopin,
+		int disable
 		)
 {
 	char strgpio[64]={0,};
+	char strexp[64]={0,};
+	char strgpiopin[8]={0,};
 	struct stat sb={0,};
 
 	int fd = 0;
 	int ret = 0;
 
-	//check already existence
-	sprintf(strgpio, STR_GPIO_SYS STR_GPIO_NUMBER, gpiopin);
-	if(stat(strgpio, &sb) == 0) { //already exist
-		BNT_CHECK_TRUE(S_ISDIR(sb.st_mode), -1);
-	}
-	else {
-		//enable gpio
-		char strexp[64]={0,};
-		sprintf(strexp, STR_GPIO_SYS STR_GPIO_EXPORT);
+	//check unexport
+	if(disable) {
+		sprintf(strexp, STR_GPIO_SYS STR_GPIO_UNEXPORT);
 		fd = open(strexp, O_WRONLY | O_SYNC);
 		BNT_CHECK_TRUE(fd >= 0, -1);
-		
-		char strgpiopin[8]={0,};
+
 		sprintf(strgpiopin, STR_GPIO_EXPORT_VAL, gpiopin);
 		ret = write(fd, strgpiopin, (size_t)strlen(strgpiopin));
 		if(ret != (ssize_t)strlen(strgpiopin)) {
@@ -159,6 +158,30 @@ do_config_gpio_irq(
 			return -1;
 		}
 		close(fd);
+		return 0;
+	}
+
+	//check already existence
+	sprintf(strgpio, STR_GPIO_SYS STR_GPIO_NUMBER, gpiopin);
+	if(stat(strgpio, &sb) == 0) { //already exist
+		BNT_CHECK_TRUE(S_ISDIR(sb.st_mode), -1);
+	}
+	else {
+		//enable gpio
+		sprintf(strexp, STR_GPIO_SYS STR_GPIO_EXPORT);
+		fd = open(strexp, O_WRONLY | O_SYNC);
+		BNT_CHECK_TRUE(fd >= 0, -1);
+		
+		sprintf(strgpiopin, STR_GPIO_EXPORT_VAL, gpiopin);
+		ret = write(fd, strgpiopin, (size_t)strlen(strgpiopin));
+		if(ret != (ssize_t)strlen(strgpiopin)) {
+			fprintf(stderr, "%s: failed to write %s to %s. (err %d)\n", 
+					__func__, strgpiopin, strexp, ret<0 ? errno:ret);
+			close(fd);
+			return -1;
+		}
+		close(fd);
+		usleep(50000);
 	}
 
 	//direction
@@ -213,6 +236,6 @@ do_config_gpio_irq(
 	fd = open(strval, O_RDONLY);
 	BNT_CHECK_TRUE(fd >= 0, -1);
 
-	return fd; //fd of "/sys/class/gpio/gpio(n)/value"
+	return fd; 
 }
 

@@ -19,7 +19,8 @@ regread(int fd, int chipid, int regaddr, void* buf, int rdbytes),
 do_open(int bus, int cs),
 do_read(int fd, void* buf, int len),
 do_write(int fd, void* buf, int len),
-do_spi_tx_rx(int fd, unsigned char* txbuf, unsigned char* rxbuf, int txlen, int rxlen);
+do_spi_tx_rx(int fd, unsigned char* txbuf, unsigned char* rxbuf, int txlen, int rxlen),
+do_config_gpio_irq(int gpiopin, int);
 
 extern void
 hexdump(const void *src, size_t length, size_t line_size, char *prefix),
