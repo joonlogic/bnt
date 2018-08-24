@@ -10,6 +10,7 @@
  *
  ********************************************************************/
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -21,14 +22,14 @@
 
 typedef struct {
 	int           boardid;
-	int           unexport;
-	int           isall;
-	int           poll;
+	bool          unexport;
+	bool          isall;
+	bool          poll;
 } T_OptInfo;
 
 static void print_usage(const char *prog)
 {
-	printf("Usage: %s [-abd]\n", prog);
+	printf("Usage: %s [-abdp]\n", prog);
 	puts("  -b --boardid     board id(default 0). Range(0~3)\n"
 	     "  -d --disable     disable(unexport) gpio\n"
 	     "  -a --all         all boards\n"
@@ -69,10 +70,10 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 			info->isall = 1;
 			break;
 		case 'd':
-			info->unexport = TRUE;
+			info->unexport = true;
 			break;
 		case 'p':
-			info->poll = TRUE;
+			info->poll = true;
 			break;
 		default:
 			print_usage(argv[0]);
@@ -117,7 +118,7 @@ int main(int argc, char *argv[])
 		ppfd = &pfd[info.boardid];
 	}
 
-	if(info.poll != TRUE) return 0;
+	if(info.poll != true) return 0;
 
 	//consume any prior interrupts
 	int c;

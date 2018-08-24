@@ -2,7 +2,7 @@
  * bnt_util.c : Utility functions
  *
  * Copyright (c) 2018  TheFrons, Inc.
- * Copyright (c) 2018  Joon Kim <joonlogic@gmail.com>
+ * Copyright (c) 2018  Joon Kim <joon@thefrons.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -11,7 +11,11 @@
  ********************************************************************/
 
 #include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
 #include <arpa/inet.h>
+#include <openssl/sha.h>
+#include <time.h>
 
 void 
 hexdump(
@@ -72,5 +76,54 @@ regdump(
         }
     }
 	printf("\n");
+}
+
+bool bnt_gethash(
+		unsigned char* input, 
+		unsigned int   length, 
+		unsigned char* out
+		)
+{
+	SHA256_CTX context;
+	if(!SHA256_Init(&context)) return false;
+	if(!SHA256_Update(&context, input, length)) return false;
+	if(!SHA256_Final(out, &context)) return false;
+
+	return true;
+}
+
+void bnt_hash2str(
+		unsigned char* hash,
+		char* out
+		)
+{
+	static const char* tbl = "0123456789abcdef";
+	for(int i=0; i<SHA256_DIGEST_LENGTH; i++) {
+		out[2*i+0] = tbl[hash[i] >> 4];
+		out[2*i+1] = tbl[hash[i] & 0x0F];
+	}
+}
+
+void bnt_str2hex(
+		char* str, 
+		int len, 
+		unsigned char* hex
+		)
+{
+	do {
+		sscanf(str, "%2hhx", hex++);
+		str += 2;
+	} while(*str);
+}
+
+void bnt_hex2str(
+		unsigned char* hex, 
+		int hexlen, 
+		char* str
+		)
+{
+    for(int i=0; i<hexlen; i++, str+=2) {
+        sprintf(str, "%02x", *hex++);
+    }
 }
 

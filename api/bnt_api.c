@@ -11,8 +11,10 @@
  ********************************************************************/
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 #include <bnt_def.h>
 #include <bnt_ext.h>
 
@@ -71,19 +73,54 @@ regread(
 	return ret;
 }
 
-int
-request_hash( 
-		int fd,
-		T_BntHash* bnthash
+void
+bnt_write_all(
+		int regaddr,
+		void* buf,
+		int wrbytes,
+		T_BntHandle* handle
 		)
 {
-	BNT_CHECK_NULL(bnthash, -1);
-
-	return regwrite( fd, bnthash->chipid, HVR0, &bnthash->workid, 
-			SIZE_BNT_HASH_TUPLE, bnthash->isbcast );
+	for(int i=0; i<handle->nboards; i++) {
+		regwrite(
+				handle->spifd[i],
+				0,
+				regaddr,
+				buf,
+				wrbytes,
+				(int)true
+				);
+	}
 }
 
 int
+bnt_request_hash( 
+		T_BntHash* hash,
+		T_BntHandle* handle
+		)
+{
+	BNT_CHECK_NULL(hash, -1);
+
+	T_BntHashHVR hvrs = {0,};
+
+	hvrs.workid = hash->workid;
+	memcpy(hvrs.midstate, hash->midstate, 32);
+	memcpy(&hvrs.merkle, &hash->bh.merkle[28], 12);
+
+	bnt_hex2str((unsigned char*)&hvrs, SIZE_TOTAL_HVR_BYTE, hvrs.strout);
+	BNT_INFO(("%s: HVR : %s\n", __func__, hvrs.strout));
+
+	bnt_write_all(
+			HVR0, 
+			(void*)&hvrs,
+			SIZE_TOTAL_HVR_BYTE,
+			handle
+			);
+
+	return 0;
+}
+
+static bool
 hello_there(
 		int fd,
 		int chipid
@@ -95,21 +132,242 @@ hello_there(
 	BNT_INFO(("%s: chipid %d -- IDR %04X\n", __func__, chipid, idr)); 
 	
 	return (idr == ((IDR_SIGNATURE << I_IDR_SIGNATURE) | chipid)) ? 
-		TRUE : FALSE;
+		true : false;
 }
 
 int
-get_lastone(
+bnt_getlastid(
 		int fd
 		)
 {
 	int chipid = 0;
-	int ret = FALSE;
+	int ret = 0;
 
 	do {
 		ret = hello_there(fd, chipid);
-		if(chipid++ == MAX_CHIPID) break;
-	} while(ret == TRUE);
+		if(ret != true) break;
+	} while(chipid++ < MAX_CHIPID);
 
 	return chipid-1;
 }
+
+int 
+bnt_softreset(
+		int fd,
+		int chipid,
+		int broadcast
+		)
+{
+	int regaddr = SSR;
+	unsigned short set = 1;
+	unsigned short unset = 0;
+	int wrbytes = 2;
+
+	regwrite(fd, chipid, regaddr, &set, wrbytes, broadcast);
+
+	usleep(100000); //100ms TODO: check the exact value
+
+	//release
+	regwrite(fd, chipid, regaddr, &unset, wrbytes, broadcast);
+
+	return 0;
+}
+
+unsigned char 
+bnt_get_nonce_mask(
+		int nboards,
+		int nchips
+		)
+{
+	static const unsigned char BNT_CONF_MASK[MAX_NBOARDS][MAX_NCHIPS_PER_BOARD] = {
+		[0][0] = 0,
+		[0][1] = 0x20,
+		[0][3] = 0x30,
+		[0][7] = 0x38,
+		[0][15] = 0x3C,
+		[0][31] = 0x3E,
+		[0][63] = 0x3F,
+		[1][0] = 0x40,
+		[1][1] = 0x60,
+		[1][3] = 0x70,
+		[1][7] = 0x78,
+		[1][15] = 0x7C,
+		[1][31] = 0x7E,
+		[1][63] = 0x7F,
+		[3][0] = 0xC0,
+		[3][1] = 0xE0,
+		[3][3] = 0xF0,
+		[3][7] = 0xF8,
+		[3][15] = 0xFC,
+		[3][31] = 0xFE,
+		[3][63] = 0xFF,
+	};
+
+	BNT_CHECK_TRUE(nboards <= MAX_NBOARDS, 0);
+	BNT_CHECK_TRUE(nchips <= MAX_NCHIPS_PER_BOARD, 0);
+
+	return BNT_CONF_MASK[nboards-1][nchips-1];
+}
+
+//get chipid shift according to nChips
+int 
+bnt_get_id_shift(
+		int nchips
+		)
+{
+	return 
+		nchips == 1 ? 0 : // theoretically 6 but no meaning
+		nchips == 2 ? 5 :
+		nchips == 4 ? 4 :
+		nchips == 8 ? 3 :
+		nchips == 16 ? 2 :
+		nchips == 32 ? 1 : 0;
+}
+
+int
+bnt_get_midstate(
+		T_BntHash* bhash
+		)
+{
+	bool ret;
+	ret = bnt_gethash(
+			(unsigned char*)&bhash->bh,
+			64,
+			bhash->midstate
+			);
+	BNT_CHECK_TRUE(ret, -1);
+
+	return 0;
+};
+
+static int
+bnt_read_mrr(
+		int fd,
+		int chipid,
+		T_BntHashMRR* mrr
+		)
+{
+	return regread(
+			fd,
+			chipid,
+			MRR0,
+			mrr,
+			sizeof(*mrr)
+		   );
+}
+
+bool
+bnt_test_validnonce(
+		T_BntHash* bhash,
+		T_BntHashMRR* mrr,
+		T_BntHandle* handle
+		)
+{
+	//check work id
+	if(bhash->workid != mrr->workid) {
+		BNT_INFO(("%s: mismatch workid. bhash->workid %02X vs mrr->workid %02X\n",
+				__func__, bhash->workid, mrr->workid));
+		return false;
+	}
+
+	//check nonce
+	if(bhash->bh.nonce != mrr->nonceout) {
+		BNT_INFO(("%s: mismatch nonce. bhash->bh.nonce %08X vs mrr->nonce %08X\n",
+				__func__, bhash->bh.nonce, mrr->nonceout));
+		return false;
+	}
+
+	return true; 
+}
+
+void
+bnt_printout_validnonce(
+		int board,
+		int chip,
+		T_BntHash* bhash
+		)
+{
+	printf("((FOUND)) [%d][%02d] nonce %08x\n",
+			board, chip, bhash->bh.nonce);
+}
+
+void printout_bh(
+        T_BlockHeader* bh
+        )
+{
+    char outstr[65] = {0,};
+    time_t ntime = bh->ntime;
+
+    printf("Version     : %08x\n", bh->version);
+
+    bnt_hash2str(bh->prevhash, outstr);
+    printf("Prev Hash   : %s\n", outstr);
+
+    bnt_hash2str(bh->merkle, outstr);
+    printf("Merkle Root : %s\n", outstr);
+
+    printf("Time Stamp  : (%08x) %s", bh->ntime, ctime(&ntime));
+    printf("Target      : %08x\n", bh->bits);
+    printf("Nonce       : %08x\n", bh->nonce);
+}
+
+void printout_hash(
+        unsigned char* hash
+        )
+{
+    char outstr[65] = {0,};
+
+    bnt_hash2str(hash, outstr);
+    printf("Hash String : %s\n", outstr);
+}
+
+
+
+/*
+ * Get nonce from Hardware Engines
+ * This is useful only for Chip test..
+ */
+int
+bnt_getnonce(
+		T_BntHash* bhash,
+		T_BntHandle* handle
+		)
+{
+	//1. Write midstate & block header info to registers 
+	bnt_request_hash(bhash, handle); 
+	sleep(1);
+
+	//2. Wait & Get results
+	T_BntHashMRR mrr={0,};
+	bool isvalid;
+	int count = 0;
+	do {
+		//check works from Engines
+		for(int board=0; board<handle->nboards; board++) {
+			for(int chip=0; chip<handle->nchips; chip++) {
+				bnt_read_mrr(
+						handle->spifd[board],
+						CHIPID_PHYSICAL(chip, handle),
+						&mrr
+						);
+				if(mrr.workid == 0) continue; //means NO results
+				isvalid = bnt_test_validnonce(bhash, &mrr, handle);
+				if(isvalid) {
+					//found it
+					bnt_printout_validnonce(board, chip, bhash);
+					return 0;
+				}
+				memset(&mrr, 0x00, sizeof(mrr));
+			}
+		}
+		sleep(1);
+		printf("%s: %d turn arround\n", __func__, count);
+	} while(count++ < THRESHOLD_GET_NONCE_COUNT);
+
+	printf("%s: Timedout. count %d\n", __func__, count);
+	return -1;
+}
+
+
+
+	

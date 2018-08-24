@@ -2,7 +2,7 @@
  * bnt_def.h : Definitions for BNT 
  *
  * Copyright (c) 2018  TheFrons, Inc.
- * Copyright (c) 2018  Joon Kim <joonlogic@gmail.com>
+ * Copyright (c) 2018  Joon Kim <joon@thefrons.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -11,9 +11,6 @@
  ********************************************************************/
 #ifndef BNT_DEF_H
 #define BNT_DEF_H
-
-#define TRUE                1
-#define FALSE               0
 
 #define BNT_TRACE(args)     printf args
 #define BNT_INFO(args)      printf args
@@ -47,7 +44,7 @@
     } // 0 means SUCCESS
 
 #define BNT_CHECK_TRUE(exp, ret) \
-    if((exp) != TRUE) { \
+    if((exp) != true) { \
         fprintf(stderr, "%s:%s:%d BNT_CHECK_TRUE\n", __FILE__, __func__, __LINE__ ); \
         return ret; \
     }
@@ -85,6 +82,11 @@
 ///// BNT system
 /////
 #define MAX_CHIPID                         0x3F
+#define MAX_NBOARDS                        4
+#define MAX_NCHIPS_PER_BOARD               64
+
+#define CHIPID_PHYSICAL(ID_LOGICAL, HANDLE) \
+	((ID_LOGICAL) << (HANDLE)->idshift)       
 
 
 /////
@@ -126,22 +128,6 @@ typedef enum {
     MRR0 = 0x1D,   // (RO) Mining Result Register 0
     MRR1 = 0x1E,   // (RO) Mining Result Register 1
     MRR2 = 0x1F,   // (RO) Mining Result Register 2
-    MRR3 = 0x20,   // (RO) Mining Result Register 3
-    MRR4 = 0x21,   // (RO) Mining Result Register 4
-    MRR5 = 0x22,   // (RO) Mining Result Register 5
-    MRR6 = 0x23,   // (RO) Mining Result Register 6
-    MRR7 = 0x24,   // (RO) Mining Result Register 7
-    MRR8 = 0x25,   // (RO) Mining Result Register 8
-    MRR9 = 0x26,   // (RO) Mining Result Register 9
-    MRR10 = 0x27,   // (RO) Mining Result Register 10
-    MRR11 = 0x28,   // (RO) Mining Result Register 11
-    MRR12 = 0x29,   // (RO) Mining Result Register 12
-    MRR13 = 0x2a,   // (RO) Mining Result Register 13
-    MRR14 = 0x2b,   // (RO) Mining Result Register 14
-    MRR15 = 0x2c,   // (RO) Mining Result Register 15
-    MRR16 = 0x2d,   // (RO) Mining Result Register 16
-    TMR0 = 0x2e,   // (RW) Test Nonce Value Register 0
-    TMR1 = 0x2f,   // (RW) Test Nonce Value Register 1
 } bnt_register_t;
 
 //I_ means offset bit
@@ -189,6 +175,7 @@ typedef enum {
 
 #define I_HVR0_HASHID                       0
 #define V_HVR0_HASHID                       8
+#define SIZE_TOTAL_HVR_BYTE                 46
 
 #define I_MRR0_HASHID                       0
 #define V_MRR0_HASHID                       8
@@ -204,36 +191,77 @@ typedef enum {
 #define SIZE_BNT_HASH_TUPLE_CORE            44 // Byte = midstate + ...
 #define COUNT_BNT_HASH_TUPLE                23 // Short
 
+#define THRESHOLD_GET_NONCE_COUNT           1000
+
 typedef struct bnt_spi_header {
-	unsigned char cmdid;
-	unsigned char addr;
-	unsigned char length;
-	unsigned char data[0];
+	unsigned char  cmdid;
+	unsigned char  addr;
+	unsigned char  length;
+	unsigned char  data[0];
 } T_BntAccess;
 
-typedef struct bnt_block_header {
-	unsigned short workid;  //BNT internal
-	unsigned int version;
-	unsigned char prev_hash[32];
-	unsigned char merkle[32];
-	unsigned char ntime[4];
-	unsigned char target[4];
-	unsigned char nonce[4];
-	unsigned char chipid;
-	int fd;
+typedef struct {
+    int            nboards;
+    int            nchips;
+    int            idshift;
+    int            spifd[MAX_NBOARDS];
+    int            gpiofd[MAX_NBOARDS];
+    int            nonce_mode;
+    unsigned short ssr;
+    unsigned char  mask;
+    FILE*          bhfp;
+    //TODO: 
+    //thread
+    //mutex
+    //stats
+    //works
+    //tasks
+} T_BntHandle;
+
+typedef struct block_header_p1 {
+	unsigned int    version;
+	unsigned char   prevhash[32];
+	unsigned char   merkle[28];
+} T_BlockHeaderP1;
+
+typedef struct block_header_p2 {
+	unsigned char   merkle[4];
+	unsigned int    ntime;
+	unsigned int    bits;
+	unsigned int    nonce;
+} T_BlockHeaderP2;
+
+typedef struct block_header {
+	unsigned int    version;
+	unsigned char   prevhash[32];
+	unsigned char   merkle[32];
+	unsigned int    ntime;
+	unsigned int    bits;
+	unsigned int    nonce;
 } T_BlockHeader;
 
 typedef struct bnt_hash_tuple {
-	unsigned short workid;  //BNT internal
-	unsigned char midstate[32];
-	unsigned char merkle[4];
-	unsigned char ntime[4];
-	unsigned char target[4];
-	unsigned char nonce[4];
-	unsigned char post_hash[32];
-	unsigned char chipid;
-	int fd;
-	unsigned char isbcast;
+	T_BlockHeader   bh;
+	unsigned char   workid;   //BNT internal
+	unsigned char   midstate[32];
+	unsigned char   hashout[32];
+	unsigned int    nonceout;
 } T_BntHash;
+
+typedef struct { //HVR
+	unsigned char   reserved;
+	unsigned char   workid;
+	unsigned char   midstate[32];
+	unsigned char   merkle[4];
+	unsigned int    ntime;
+	unsigned int    bits;
+	char            strout[SIZE_TOTAL_HVR_BYTE*2+1]; 
+} T_BntHashHVR;
+
+typedef struct {
+	unsigned char   reserved;
+	unsigned char   workid;  //BNT internal
+	unsigned int    nonceout;
+} T_BntHashMRR;
 
 #endif //BNT_DEF_H

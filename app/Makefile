@@ -4,8 +4,9 @@ INSTALL_PATH=/bnt
 CC = gcc -g
 
 TARGET =  bnt_access
-TARGET +=  spidev_test
+TARGET += spidev_test
 TARGET += bnt_gpioint
+TARGET += bnt_getnonce
 
 ifeq ($(BNT_LIBDIR),)
     BNT_LIBDIR = ../api
@@ -22,7 +23,7 @@ BNT_LIB = $(BNT_LIBDIR)/libbnt.a
 BNT_INC = -I../api 
 
 CFLAGS += -DLINUX -Wall
-LFLAGS += 
+LFLAGS += -lcrypto
 
 all: $(TARGET)
 
@@ -30,6 +31,9 @@ bnt_access: bnt_access.c $(BNT_LIB)
 	$(CC) -Wall $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
 
 bnt_gpioint: bnt_gpioint.c $(BNT_LIB)
+	$(CC) -Wall $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
+
+bnt_getnonce: bnt_getnonce.c $(BNT_LIB)
 	$(CC) -Wall $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
 
 spitest: spidev_test.c 

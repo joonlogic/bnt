@@ -2,7 +2,7 @@
  * bnt_ext.h : Extern functions 
  *
  * Copyright (c) 2018  TheFrons, Inc.
- * Copyright (c) 2018  Joon Kim <joonlogic@gmail.com>
+ * Copyright (c) 2018  Joon Kim <joon@thefrons.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,31 @@ do_config_gpio_irq(int gpiopin, int);
 
 extern void
 hexdump(const void *src, size_t length, size_t line_size, char *prefix),
-regdump( const void *src, size_t count, int addr); 
+regdump(const void *src, size_t count, int addr); 
+
+extern bool 
+bnt_gethash(unsigned char* input, unsigned int   length, unsigned char* out);
+
+extern void 
+bnt_hash2str(unsigned char* hash, char* out),
+bnt_str2hex(char* str, int len, unsigned char* hex),
+bnt_hex2str(unsigned char* hex, int hexlen, char* str),
+bnt_printout_validnonce(int board, int chip, T_BntHash* bhash),
+printout_bh(T_BlockHeader* bh),
+printout_hash(unsigned char* hash);
+
+
+extern void
+bnt_write_all(int regaddr, void* buf, int wrbytes, T_BntHandle* handle);
+
+
+extern int bnt_softreset(int fd, int chipid, int broadcast);
+extern unsigned char bnt_get_nonce_mask(int nboards, int nchips);
+extern int bnt_get_id_shift(int nchips);
+extern int bnt_get_midstate(T_BntHash* bhash);
+extern bool
+bnt_test_validnonce(T_BntHash* bhash, T_BntHashMRR* mrr, T_BntHandle* handle);
+extern int bnt_getnonce(T_BntHash* bhash, T_BntHandle* handle);
+
 
 #endif // BNT_EXT_H

@@ -2,7 +2,7 @@
  * bnt_access.c : Application for accessing BNT registers
  *
  * Copyright (c) 2018  TheFrons, Inc.
- * Copyright (c) 2018  Joon Kim <joonlogic@gmail.com>
+ * Copyright (c) 2018  Joon Kim <joon@thefrons.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -11,6 +11,7 @@
  ********************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
