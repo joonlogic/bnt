@@ -31,11 +31,10 @@ typedef struct {
 
 static void print_usage(const char *prog)
 {
-	printf("Usage: %s [-a] [-b] <nBoards> [-c] <nChips/board> [-rw] <file>\n", 
+	printf("\nUsage: %s [-b] <nBoards> [-c] <nChips per board> [-rw] <file>\n", 
 			prog);
-	puts("  -b --nboards  number of boards in system(default 1). Range(1~4)\n"
-	     "  -c --nchips   number of chips per board(default 1). Range(1~64)\n"
-	     "  -a --auto     autodetect boards & chips (Not Yet Implemented)\n"
+	puts("  -b --nboards  number of boards in system. Range(1~4)\n"
+	     "  -c --nchips   number of chips per board. Range(1~64)\n"
 	     "  -r --read     input block header sample file\n"
 	     "  -w --write    write log to file (NYI)\n");
 	exit(1);
@@ -47,14 +46,15 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 		static const struct option lopts[] = {
 			{ "nboards", 1, 0, 'b' },
 			{ "nchips",  1, 0, 'c' },
-			{ "auto",    1, 0, 'a' },
+			{ "auto",    0, 0, 'a' },
+			{ "help",    0, 0, 'h' },
 			{ "read",    1, 0, 'r' },
 			{ "write",   1, 0, 'w' },
 			{ NULL,      0, 0, 0 },
 		};
 		int c;
 
-		c = getopt_long(argc, argv, "b:c:r:w:a", lopts, NULL);
+		c = getopt_long(argc, argv, "b:c:r:w:ah", lopts, NULL);
 
 		if (c == -1)
 			break;
@@ -62,9 +62,11 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 		switch (c) {
 			case 'b':
 				info->nboards = atoi(optarg);
+				info->autodetect = false;
 				break;
 			case 'c':
 				info->nchips = atoi(optarg);
+				info->autodetect = false;
 				break;
 			case 'a':
 				info->autodetect = true;
@@ -75,6 +77,7 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 			case 'w':
 				strcpy(info->outfile, optarg);
 				break;
+			case 'h':
 			default:
 				print_usage(argv[0]);
 				break;
@@ -82,6 +85,7 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 	}
 
 	switch(info->nboards) {
+		case 0:
 		case 1:
 		case 2:
 		case 4:
@@ -93,6 +97,7 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 	}
 
 	switch(info->nchips) {
+		case 0:
 		case 1:
 		case 2:
 		case 4:
@@ -127,7 +132,7 @@ bnt_init(
 {
 	//reset
 	for(int i=0; i<handle->nboards; i++) {
-		bnt_softreset(handle->spifd[i], 0, (int)true);
+		bnt_softreset(handle->spifd[i], 0, true);
 	}
 
 	//set GPIO irq
@@ -190,11 +195,11 @@ int main(int argc, char *argv[])
 	char infile[MAX_FILENAME_STR]={0,};
 	char outfile[MAX_FILENAME_STR]={0,};
 	T_OptInfo info = {
-		.nboards = 1,
-		.nchips = 1,
+		.nboards = 0,
+		.nchips = 0,
 		.infile = infile,
 		.outfile = outfile,
-		.autodetect = false
+		.autodetect = true
 	};
 
 	if(argc == 1) print_usage(argv[0]);
@@ -202,11 +207,17 @@ int main(int argc, char *argv[])
 	ret = parse_opts(argc, argv, &info);
 	BNT_CHECK_RESULT(ret, ret);
 
+	if(info.autodetect) {
+		ret = bnt_detect(&info.nboards, &info.nchips);
+		BNT_CHECK_RESULT(ret, ret);
+	}
+
 	//prepare data structure
 	T_BntHandle handle = {
 		.nboards = info.nboards,
 		.nchips = info.nchips,
 	};
+
 
 	T_BntHash bhash = {0,};
 

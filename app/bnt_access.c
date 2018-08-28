@@ -19,14 +19,17 @@
 #include <arpa/inet.h>
 #include <bnt_def.h>
 #include <bnt_ext.h>
+#include <sys/ioctl.h>
+#include <linux/spi/spidev.h>
 
 typedef struct {
 	int            boardid;
 	int            chipid;
 	int            count;
 	int            addr;
+	unsigned int   speed;
 	int            verbose;
-	int            isbcast;
+	bool           isbcast;
 	int            iswrite;
 	unsigned char* buf;
 } T_AccessInfo;
@@ -35,8 +38,9 @@ static void print_usage(const char *prog)
 {
 	printf("Usage: %s [-bcnav] [-rw] <REG_ADDR> [REG_VAL(s)]\n", prog);
 	puts("  -b --boardid  board id(default 0). Range(0~3)\n"
-	     "  -c --chipid   chip id(default 0). Range(0~63)\n"
+	     "  -c --chipid   spi chip id(default 0). Range(0~63)\n"
 	     "  -n --count    count (default 1). Range(1-23)\n"
+	     "  -s --speed    max speed (Hz)\n"
 	     "  -a --all      all boards & chips (broadcast write)\n"
 	     "  -r --read     read\n"
 	     "  -w --write    write\n"
@@ -53,6 +57,7 @@ static int parse_opts(int argc, char *argv[], T_AccessInfo* info)
 			{ "boardid", 1, 0, 'b' },
 			{ "chipid",  1, 0, 'c' },
 			{ "count",   1, 0, 'n' },
+			{ "speed",   1, 0, 's' },
 			{ "read",    1, 0, 'r' },
 			{ "write",   1, 0, 'w' },
 			{ "all",     0, 0, 'a' },
@@ -61,7 +66,7 @@ static int parse_opts(int argc, char *argv[], T_AccessInfo* info)
 		};
 		int c;
 
-		c = getopt_long(argc, argv, "b:c:n:r:w:av", lopts, NULL);
+		c = getopt_long(argc, argv, "b:c:n:s:r:w:av", lopts, NULL);
 
 		if (c == -1)
 			break;
@@ -76,11 +81,14 @@ static int parse_opts(int argc, char *argv[], T_AccessInfo* info)
 		case 'n':
 			info->count = atoi(optarg);
 			break;
+		case 's':
+			info->speed = atoi(optarg);
+			break;
 		case 'v':
 			info->verbose = 1;
 			break;
 		case 'a':
-			info->isbcast = 1;
+			info->isbcast = true;
 			break;
 		case 'r':
 			info->iswrite = 0;
@@ -156,8 +164,26 @@ int main(int argc, char *argv[])
 		fd = do_open(BUS_SPI(0), csidx); 
 		if(fd < 0) {
 			printf("%s: SPI open error. board %d cs %d fd %d\n", 
-					__func__, 0, csidx, fd);
+					argv[0], 0, csidx, fd);
 			continue;
+		}
+
+		//max speed
+		if(info.speed != 0) {
+			ret = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &info.speed);
+			if(ret < 0) {
+				printf("%s: Can't set max speed %d HZ\n", 
+						argv[0], info.speed);
+			}
+
+			ret = ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &info.speed);
+			if(ret < 0) {
+				printf("%s: Can't get max speed.\n", argv[0]);
+			}
+			else {
+				printf("%s: max speed %d Hz (%d kHz)\n", 
+						argv[0], info.speed, info.speed/1000);
+			}
 		}
 
 		nbytes = info.count << 1;

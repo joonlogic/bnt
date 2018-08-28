@@ -85,6 +85,9 @@
 #define MAX_NBOARDS                        4
 #define MAX_NCHIPS_PER_BOARD               64
 
+#define BITS_BOARDID                       2
+#define BITS_CHIPID                        6
+
 #define CHIPID_PHYSICAL(ID_LOGICAL, HANDLE) \
 	((ID_LOGICAL) << (HANDLE)->idshift)       
 

@@ -14,7 +14,7 @@
 #define BNT_EXT_H
 
 extern int
-regwrite(int fd, int chipid, int regaddr, void* buf, int wrbytes, int isbcast),
+regwrite(int fd, int chipid, int regaddr, void* buf, int wrbytes, bool isbcast),
 regread(int fd, int chipid, int regaddr, void* buf, int rdbytes),
 do_open(int bus, int cs),
 do_read(int fd, void* buf, int len),
@@ -42,13 +42,18 @@ extern void
 bnt_write_all(int regaddr, void* buf, int wrbytes, T_BntHandle* handle);
 
 
-extern int bnt_softreset(int fd, int chipid, int broadcast);
 extern unsigned char bnt_get_nonce_mask(int nboards, int nchips);
-extern int bnt_get_id_shift(int nchips);
-extern int bnt_get_midstate(T_BntHash* bhash);
 extern bool
 bnt_test_validnonce(T_BntHash* bhash, T_BntHashMRR* mrr, T_BntHandle* handle);
-extern int bnt_getnonce(T_BntHash* bhash, T_BntHandle* handle);
+
+extern int 
+bnt_softreset(int fd, int chipid, bool broadcast),
+bnt_get_id_shift(int nchips),
+bnt_get_midstate(T_BntHash* bhash),
+bnt_getnonce(T_BntHash* bhash, T_BntHandle* handle),
+bnt_detect(int* nboards, int* nchips),
+bnt_devscan(int* nboards, int* nchips);
+
 
 
 #endif // BNT_EXT_H

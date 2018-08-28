@@ -25,7 +25,7 @@ regwrite(
 		int regaddr,
 		void* buf,
 		int wrbytes,
-		int isbcast
+		bool isbcast
 		)
 {
 	BNT_CHECK_NULL(buf, -1);
@@ -135,27 +135,11 @@ hello_there(
 		true : false;
 }
 
-int
-bnt_getlastid(
-		int fd
-		)
-{
-	int chipid = 0;
-	int ret = 0;
-
-	do {
-		ret = hello_there(fd, chipid);
-		if(ret != true) break;
-	} while(chipid++ < MAX_CHIPID);
-
-	return chipid-1;
-}
-
 int 
 bnt_softreset(
 		int fd,
 		int chipid,
-		int broadcast
+		bool broadcast
 		)
 {
 	int regaddr = SSR;
@@ -368,6 +352,105 @@ bnt_getnonce(
 	return -1;
 }
 
+int
+bnt_detect(
+		int* nboards,
+		int* nchips
+		)
+{
+	int spifd[MAX_NBOARDS]={0,};
+	int board, chip, shift;
+	int chipcount[MAX_NBOARDS] = {0,};
 
+	puts("BNT_DETECT : ");
+	for(board=0; board<MAX_NBOARDS; board++) {
+		spifd[board] = do_open(0, board);
+		if(spifd[board] < 0) break;
 
-	
+		chip = 0;
+		if(!hello_there(spifd[board], chip)) 
+			break; //no chips on this board
+
+		chipcount[board] = 1;
+		for(int i=0; i<BITS_CHIPID; i++) {
+			chip = (MAX_NCHIPS_PER_BOARD - (1 << i)) & MAX_CHIPID;
+			if(hello_there(spifd[board], chip)) {
+				chipcount[board] = MAX_NCHIPS_PER_BOARD >> i;
+				break;
+			}
+		}
+	}
+
+	*nboards = board;
+	*nchips = chipcount[0];
+
+	printf("\n\t nBoards %d\n", *nboards);
+	printf("\n\t nChips %d\n", *nchips);
+
+	//verify
+	shift = bnt_get_id_shift(*nchips);
+	for(board=0; board<*nboards; board++)  {
+		for(chip=0; chip<*nchips; chip++) {
+			if(hello_there(spifd[board], chip << shift)) {
+				printf("(Verification Okay) Hello from Board %d Chip %d(0x%06X)\n",
+						board, chip << shift, chip << shift);
+			}
+			else {
+				printf("(Verification Error) ** NO Response from Board %d Chip %d(0x%06X)\n",
+						board, chip << shift, chip << shift);
+			}
+		}
+		close(spifd[board]);
+	}
+
+	printf("Verification Done\n");
+
+	return 0;
+}
+
+int 
+bnt_devscan(
+		int* nboards,
+		int* nchips
+		)
+{
+	int spifd[MAX_NBOARDS]={0,};
+	int board, chip;
+	int chipcount[MAX_NBOARDS] = {0,};
+
+	puts("BNT DEVICE SCAN : ");
+	for(board=0; board<MAX_NBOARDS; board++) {
+		spifd[board] = do_open(0, board);
+		if(spifd[board] < 0) break;
+
+		printf("\n\t[Board %d] : ", board);
+		for(chip=0; chip<MAX_NCHIPS_PER_BOARD; chip++) {
+			if(hello_there(spifd[board], chip)) {
+				putchar('O');
+				chipcount[board]++;
+			}
+			else {
+				putchar('.');
+			}
+
+			if(chip % 8 == 7) putchar(' ');
+		}
+
+		printf("\n\t\t nChips %d\n", chipcount[board]);
+		close(spifd[board]);
+	}
+
+	*nboards = board;
+	*nchips = chipcount[0];
+
+	for(board=*nboards; board>1; board++) {
+		if(chipcount[board-1] != chipcount[board-2]) {
+			printf("Error! Wrong Configuration. Board %d/%d Chip count %d vs %d\n",
+					board-1, board-2, chipcount[board-1], chipcount[board-2]);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
