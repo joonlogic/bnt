@@ -7,6 +7,8 @@ TARGET =  bnt_access
 TARGET += spidev_test
 TARGET += bnt_gpioint
 TARGET += bnt_getnonce
+TARGET += bnt_reset
+TARGET += bnt_devscan
 
 ifeq ($(BNT_LIBDIR),)
     BNT_LIBDIR = ../api
@@ -34,6 +36,12 @@ bnt_gpioint: bnt_gpioint.c $(BNT_LIB)
 	$(CC) -Wall $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
 
 bnt_getnonce: bnt_getnonce.c $(BNT_LIB)
+	$(CC) -Wall $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
+
+bnt_reset: bnt_reset.c $(BNT_LIB)
+	$(CC) -Wall $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
+
+bnt_devscan: bnt_devscan.c $(BNT_LIB)
 	$(CC) -Wall $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
 
 spitest: spidev_test.c 
