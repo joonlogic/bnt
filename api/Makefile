@@ -8,6 +8,7 @@ LFLAGS =
 CFLAGS_SO += $(CFLAGS) -fPIC
 LFLAGS_SO += -shared $(LFLAGS) 
 CFLAGS += -DDEBUG
+CFLAGS += -DFPGA
 
 INCLUDES = $(wildcard *.h)
 TARGET = $(BNT_LIB)

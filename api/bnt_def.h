@@ -54,6 +54,7 @@
 /////
 #define MAX_LENGTH_BNT_SPI                 64  //TODO: should be optimized.
 #define LENGTH_MSG_HEADER                  3
+#define LENGTH_SPI_PADDING_BYTE            1   //ASIC needs more clock 
 
 #define CMD_READ                           0
 #define CMD_WRITE                          1
@@ -90,6 +91,14 @@
 
 #define CHIPID_PHYSICAL(ID_LOGICAL, HANDLE) \
 	((ID_LOGICAL) << (HANDLE)->idshift)       
+
+#ifdef FPGA
+#define N_INTERNAL_HASH_ENGINES            16
+#define SHIFT_INTERNAL_HASH_ENGINES        4
+#else
+#define N_INTERNAL_HASH_ENGINES            64
+#define SHIFT_INTERNAL_HASH_ENGINES        6
+#endif
 
 
 /////

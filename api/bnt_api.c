@@ -39,7 +39,7 @@ regwrite(
 	access->length = HEADER_THIRD(wrbytes);
 	memcpy(access->data, buf, wrbytes);
 
-	ret = do_write(fd, txbuf, LENGTH_SPI_MSG(wrbytes));
+	ret = do_write(fd, txbuf, LENGTH_SPI_MSG(wrbytes) + LENGTH_SPI_PADDING_BYTE);
 	return ret - LENGTH_MSG_HEADER;
 }
 
@@ -65,7 +65,7 @@ regread(
 	access->length = HEADER_THIRD(rdbytes);
 
 	txlen = LENGTH_SPI_MSG(0);
-	rxlen = rdbytes;
+	rxlen = rdbytes + LENGTH_SPI_PADDING_BYTE;
 
 	ret = do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen); //TODO: compare with do_read
 	BNT_CHECK_TRUE(ret >= 0, ret);
@@ -443,6 +443,11 @@ bnt_devscan(
 	*nboards = board;
 	*nchips = chipcount[0];
 
+	if(*nchips == 0) {
+		printf("No Devices scanned!\n");
+		return 0;
+	}
+
 	for(board=*nboards; board>1; board++) {
 		if(chipcount[board-1] != chipcount[board-2]) {
 			printf("Error! Wrong Configuration. Board %d/%d Chip count %d vs %d\n",
@@ -454,3 +459,53 @@ bnt_devscan(
 	return 0;
 }
 
+unsigned int
+bnt_get_realnonce(
+		unsigned short mrr2,
+		unsigned short mrr1,
+		unsigned char mask
+		)
+{
+	unsigned int mrr;
+	unsigned int nonce;
+	static const unsigned int window[256] = {
+		//refer to "nonce compensation by S/W" slide
+#ifdef FPGA
+		[0] = 0xFFFFFFF0,
+		[0x30] = 0x3FFFFFF0,
+		[0x70] = 0x1FFFFFF0,
+		[0xF0] = 0x0FFFFFF0,
+#else
+		[0] = 0xFFFFFFC0,
+		[0x30] = 0x3FFFFFC0,
+		[0x70] = 0x1FFFFFC0,
+		[0xF0] = 0x0FFFFFC0,
+#endif
+		[0x20] = 0x7FFFFFC0,
+		[0x38] = 0x1FFFFFC0,
+		[0x3C] = 0x0FFFFFC0,
+		[0x3E] = 0x07FFFFC0,
+		[0x3F] = 0x03FFFFC0,
+		[0x40] = 0x7FFFFFC0,
+		[0x60] = 0x3FFFFFC0,
+		[0x78] = 0x0FFFFFC0,
+		[0x7C] = 0x07FFFFC0,
+		[0x7E] = 0x03FFFFC0,
+		[0x7F] = 0x01FFFFC0,
+		[0xC0] = 0x3FFFFFC0,
+		[0xE0] = 0x1FFFFFC0,
+		[0xF8] = 0x07FFFFC0,
+		[0xFC] = 0x03FFFFC0,
+		[0xFE] = 0x01FFFFC0,
+		[0xFF] = 0x00FFFFC0,
+	};
+
+	mrr = ((unsigned int)mrr2 << 16) | (unsigned int)mrr1;
+
+	nonce = (mrr & window[mask]) >> SHIFT_INTERNAL_HASH_ENGINES;
+	nonce -= 2; 
+	nonce <<= SHIFT_INTERNAL_HASH_ENGINES;
+	nonce = (mrr & (~(window[mask]))) | (nonce & window[mask]);
+
+	return nonce; 
+}

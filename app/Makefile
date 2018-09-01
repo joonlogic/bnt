@@ -26,6 +26,7 @@ BNT_INC = -I../api
 
 CFLAGS += -DLINUX -Wall
 LFLAGS += -lcrypto
+CFLAGS += -DFPGA
 
 all: $(TARGET)
 
