@@ -73,6 +73,36 @@ regread(
 	return ret;
 }
 
+int 
+regdump(
+		int fd,
+		int chipid,
+		void* buf
+		)
+{
+	BNT_CHECK_NULL(buf, -1);
+
+	unsigned char txbuf[MAX_LENGTH_BNT_SPI] = {0,};
+	unsigned char rxbuf[MAX_LENGTH_BNT_SPI] = {0,};
+	T_BntAccess* access = (T_BntAccess*)txbuf;
+	int txlen = 0;
+	int rxlen = 0;
+
+	access->cmdid = HEADER_FIRST(CMD_READ, CMD_UNICAST, chipid);
+	access->length = HEADER_THIRD(1);
+	txlen = LENGTH_SPI_MSG(0);
+	rxlen = SIZE_REG_DATA_BYTE + LENGTH_SPI_PADDING_BYTE;
+
+	for(int i=0; i<ENDOF_BNT_REGISTERS; i++) {
+		access->addr = HEADER_SECOND(i);
+		do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen); 
+		*(unsigned short*)(buf+(i<<1))= *(unsigned short*)rxbuf;
+	}
+
+	return 0;
+}
+
+
 void
 bnt_write_all(
 		int regaddr,
@@ -461,8 +491,8 @@ bnt_devscan(
 
 unsigned int
 bnt_get_realnonce(
-		unsigned short mrr2,
 		unsigned short mrr1,
+		unsigned short mrr2,
 		unsigned char mask
 		)
 {
@@ -500,7 +530,7 @@ bnt_get_realnonce(
 		[0xFF] = 0x00FFFFC0,
 	};
 
-	mrr = ((unsigned int)mrr2 << 16) | (unsigned int)mrr1;
+	mrr = ((unsigned int)mrr1 << 16) | (unsigned int)mrr2;
 
 	nonce = (mrr & window[mask]) >> SHIFT_INTERNAL_HASH_ENGINES;
 	nonce -= 2; 

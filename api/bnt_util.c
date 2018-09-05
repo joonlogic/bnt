@@ -51,7 +51,7 @@ hexdump(
 }
 
 void 
-regdump(
+printreg(
 		const void *src, 
 		size_t count, 
 		int addr

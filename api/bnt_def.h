@@ -140,6 +140,7 @@ typedef enum {
     MRR0 = 0x1D,   // (RO) Mining Result Register 0
     MRR1 = 0x1E,   // (RO) Mining Result Register 1
     MRR2 = 0x1F,   // (RO) Mining Result Register 2
+	ENDOF_BNT_REGISTERS = 0x20,
 } bnt_register_t;
 
 //I_ means offset bit

@@ -16,6 +16,7 @@
 extern int
 regwrite(int fd, int chipid, int regaddr, void* buf, int wrbytes, bool isbcast),
 regread(int fd, int chipid, int regaddr, void* buf, int rdbytes),
+regdump(int fd, int chipid, void* buf),
 do_open(int bus, int cs),
 do_read(int fd, void* buf, int len),
 do_write(int fd, void* buf, int len),
@@ -24,7 +25,7 @@ do_config_gpio_irq(int gpiopin, int);
 
 extern void
 hexdump(const void *src, size_t length, size_t line_size, char *prefix),
-regdump(const void *src, size_t count, int addr); 
+printreg(const void *src, size_t count, int addr); 
 
 extern bool 
 bnt_gethash(unsigned char* input, unsigned int   length, unsigned char* out);

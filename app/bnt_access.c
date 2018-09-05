@@ -30,6 +30,7 @@ typedef struct {
 	unsigned int   speed;
 	int            verbose;
 	bool           isbcast;
+	bool           isdump;
 	int            iswrite;
 	unsigned char* buf;
 } T_AccessInfo;
@@ -42,6 +43,7 @@ static void print_usage(const char *prog)
 	     "  -n --count    count (default 1). Range(1-23)\n"
 	     "  -s --speed    max speed (Hz)\n"
 	     "  -a --all      all boards & chips (broadcast write)\n"
+	     "  -d --dump     Dump all registers\n"
 	     "  -r --read     read\n"
 	     "  -w --write    write\n"
 	     "  -v --verbose  Verbose (show tx/rx buffer)\n"
@@ -61,12 +63,13 @@ static int parse_opts(int argc, char *argv[], T_AccessInfo* info)
 			{ "read",    1, 0, 'r' },
 			{ "write",   1, 0, 'w' },
 			{ "all",     0, 0, 'a' },
+			{ "all",     0, 0, 'd' },
 			{ "verbose", 0, 0, 'v' },
 			{ NULL,      0, 0, 0 },
 		};
 		int c;
 
-		c = getopt_long(argc, argv, "b:c:n:s:r:w:av", lopts, NULL);
+		c = getopt_long(argc, argv, "b:c:n:s:r:w:adv", lopts, NULL);
 
 		if (c == -1)
 			break;
@@ -89,6 +92,9 @@ static int parse_opts(int argc, char *argv[], T_AccessInfo* info)
 			break;
 		case 'a':
 			info->isbcast = true;
+			break;
+		case 'd':
+			info->isdump = true;
 			break;
 		case 'r':
 			info->iswrite = 0;
@@ -138,7 +144,7 @@ int main(int argc, char *argv[])
 	int fd;
 	int nbytes = 0;
 	int cs_start, cs_end;
-	unsigned char buf[MAX_LENGTH_BNT_SPI]={0,};
+	unsigned char buf[512]={0,};
 	T_AccessInfo info = {
 		.count = 1,
 		.buf = buf,
@@ -188,7 +194,8 @@ int main(int argc, char *argv[])
 
 		nbytes = info.count << 1;
 
-		ret = info.iswrite ? \
+		ret = info.isdump ? regdump(fd, info.chipid, info.buf) :
+			  info.iswrite ? \
 			  regwrite(fd, info.chipid, info.addr, info.buf, 
 					  nbytes, info.isbcast) :
 			  regread(fd, info.chipid, info.addr, info.buf, nbytes);
@@ -196,7 +203,10 @@ int main(int argc, char *argv[])
 		printf("[BNT REG %s] Board %d Chip %d %s\n", 
 				info.iswrite ? "WRITE" : "READ", csidx, info.chipid, 
 				info.iswrite ? info.isbcast ? "Broadcast" : "" : "");
-		regdump(info.buf, info.count, info.addr);
+
+		info.isdump ? \
+			printreg(info.buf, ENDOF_BNT_REGISTERS, 0x00) :
+			printreg(info.buf, info.count, info.addr);
 		close(fd);
 	} while(csidx++ < cs_end);
 
