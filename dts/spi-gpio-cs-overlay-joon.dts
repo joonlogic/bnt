@@ -14,10 +14,14 @@
 			cs-gpios = <0xe 0x8 0x1 0xe 0x7 0x1 0xe 0xc 0x1 0xe 0x10 0x1>;
 
 			spidev@0{
+				compatible = "spidev";
+				reg = <0>;	/* CE0 */
 				spi-max-frequency = <1000000>;
 			};
 
 			spidev@1{
+				compatible = "spidev";
+				reg = <1>;	/* CE1 */
 				spi-max-frequency = <1000000>;
 			};
 
