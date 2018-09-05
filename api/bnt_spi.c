@@ -87,7 +87,8 @@ do_spi_tx_rx(
 		unsigned char* txbuf,
 		unsigned char* rxbuf,
 		int txlen,
-		int rxlen
+		int rxlen,
+		bool verbose
 		)
 {
 	int ret = 0;
@@ -103,10 +104,11 @@ do_spi_tx_rx(
 	ret = ioctl(fd, SPI_IOC_MESSAGE(2), xfer);
 	BNT_CHECK_TRUE(ret >= 0, ret);
 
-#ifdef DEBUG
-	hexdump(txbuf, txlen, 16, "(1) WRITE");
-	hexdump(rxbuf, rxlen, 16, "(2) READ ");
-#endif
+	if(verbose) {
+		hexdump(txbuf, txlen, 16, "(1) WRITE");
+		hexdump(rxbuf, rxlen, 16, "(2) READ ");
+	}
+
 	return ret;
 }
 
