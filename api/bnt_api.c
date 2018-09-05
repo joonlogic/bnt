@@ -35,7 +35,7 @@ regwrite(
 	T_BntAccess* access = (T_BntAccess*)txbuf;
 	int ret = 0;
 
-	access->cmdid = HEADER_FIRST(CMD_WRITE, isbcast, chipid);
+	access->cmdid = HEADER_FIRST(CMD_WRITE, isbcast, isbcast ? 0x3F : chipid);
 	access->addr = HEADER_SECOND(regaddr);
 	access->length = HEADER_THIRD(wrbytes);
 	memcpy(access->data, buf, wrbytes);
