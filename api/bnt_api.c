@@ -11,6 +11,7 @@
  ********************************************************************/
 
 #include <stdio.h>
+#include <arpa/inet.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
@@ -67,8 +68,10 @@ regread(
 	txlen = LENGTH_SPI_MSG(0);
 	rxlen = rdbytes + LENGTH_SPI_PADDING_BYTE;
 
-	ret = do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen); //TODO: compare with do_read
+	ret = do_spi_tx_rx(fd, txbuf, txbuf, txlen, rxlen); //TODO: compare with do_read
 	BNT_CHECK_TRUE(ret >= 0, ret);
+
+	memcpy(rxbuf, txbuf, rdbytes);
 
 	return ret;
 }
@@ -159,6 +162,7 @@ hello_there(
 	unsigned short idr = 0;
 	regread(fd, chipid, IDR, &idr, SIZE_REG_DATA_BYTE);
 
+	idr = ntohs(idr);
 	BNT_INFO(("%s: chipid %d -- IDR %04X\n", __func__, chipid, idr)); 
 	
 	return (idr == ((IDR_SIGNATURE << I_IDR_SIGNATURE) | chipid)) ? 
@@ -478,7 +482,8 @@ bnt_devscan(
 		return 0;
 	}
 
-	for(board=*nboards; board>1; board++) {
+	for(board=*nboards; board>1; board--) {
+		printf("%s: board %d chip count %d\n", __func__, board-1, chipcount[board-1]);
 		if(chipcount[board-1] != chipcount[board-2]) {
 			printf("Error! Wrong Configuration. Board %d/%d Chip count %d vs %d\n",
 					board-1, board-2, chipcount[board-1], chipcount[board-2]);
