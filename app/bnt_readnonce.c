@@ -29,7 +29,7 @@ static void print_usage(const char *prog)
 {
 	printf("Usage: %s [-b] [boardid] [-c] [chipid] \n", prog);
 	puts("  -b --boardid  board id(default 0). Range(0~3)\n"
-	     "  -c --chipid   SPI chip id(default 0). Range(0~63)\n"
+	     "  -c --chipid   SPI chip id(default 0). Range(0~63)\n");
 	exit(1);
 }
 
@@ -52,12 +52,9 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 		switch (c) {
 		case 'b':
 			info->boardid = atoi(optarg);
-			info->allboards = false;
 			break;
 		case 'c':
 			info->chipid = atoi(optarg);
-			info->allboards = false;
-			info->allchips = false;
 			break;
 		case 'h':
 		default:
@@ -78,7 +75,6 @@ int main(int argc, char *argv[])
 	ret = parse_opts(argc, argv, &info);
 	BNT_CHECK_RESULT(ret, ret);
 
-	int sure = 0;
 	int spifd = 0;
 
 	spifd = do_open(0, info.boardid);
@@ -91,14 +87,14 @@ int main(int argc, char *argv[])
 	bnt_read_mrr(spifd, info.chipid, &mrr);
 	
 	unsigned short mask = 0;
-	unsigned short realnonce = 0;
-	regread(spifd, info.chipid, SSR, &mask, sizeof(mask));
+	unsigned int realnonce = 0;
+	regread(spifd, info.chipid, SSR, &mask, sizeof(mask), false);
 	mask >>= I_SSR_MASK; 
 
 	printf("MASK       : %02X\n", mask);
-	realnonce = bnt_get_realnonce(mrr->nonceout, (unsigned char)mask);
+	realnonce = bnt_get_realnonce(mrr.nonceout, (unsigned char)mask);
 
-	printf("OUT NONCE  : %08X\n", mrr->nonceout);
+	printf("OUT NONCE  : %08X\n", mrr.nonceout);
 	printf("REAL NONCE : %08X\n", realnonce);
 
 	close(spifd);

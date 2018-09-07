@@ -267,14 +267,9 @@ bnt_read_mrr(
 		T_BntHashMRR* mrr
 		)
 {
-	return regread(
-			fd,
-			chipid,
-			MRR0,
-			mrr,
-			sizeof(*mrr),
-			false
-		   );
+	regread(fd, chipid, MRR0, mrr, sizeof(*mrr), false);
+	mrr->nonceout = htonl(mrr->nonceout);
+	return 0;
 }
 
 bool
