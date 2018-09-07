@@ -506,6 +506,7 @@ bnt_get_realnonce(
 		unsigned char mask
 		)
 {
+	unsigned char offset;
 	unsigned int nonce;
 	static const unsigned int window[256] = {
 		//refer to "nonce compensation by S/W" slide
@@ -540,8 +541,9 @@ bnt_get_realnonce(
 		[0xFF] = 0x00FFFFC0,
 	};
 
+	offset = ((unsigned char)( mrr & (~window[mask]) ) >> 1) ? 2 : 3;
 	nonce = (mrr & window[mask]) >> SHIFT_INTERNAL_HASH_ENGINES;
-	nonce -= 2; 
+	nonce -= offset; 
 	nonce <<= SHIFT_INTERNAL_HASH_ENGINES;
 	nonce = (mrr & (~(window[mask]))) | (nonce & window[mask]);
 
