@@ -53,8 +53,11 @@ bnt_get_id_shift(int nchips),
 bnt_get_midstate(T_BntHash* bhash),
 bnt_getnonce(T_BntHash* bhash, T_BntHandle* handle),
 bnt_detect(int* nboards, int* nchips),
+bnt_read_mrr(int fd, int chipid, T_BntHashMRR* mrr),
 bnt_devscan(int* nboards, int* nchips);
 
+extern unsigned int
+bnt_get_realnonce(unsigned int mrr, unsigned char mask);
 
 
 #endif // BNT_EXT_H
