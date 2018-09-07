@@ -11,6 +11,7 @@
  ********************************************************************/
 
 #include <stdio.h>
+#include <arpa/inet.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
@@ -34,7 +35,7 @@ regwrite(
 	T_BntAccess* access = (T_BntAccess*)txbuf;
 	int ret = 0;
 
-	access->cmdid = HEADER_FIRST(CMD_WRITE, isbcast, chipid);
+	access->cmdid = HEADER_FIRST(CMD_WRITE, isbcast, isbcast ? 0x3F : chipid);
 	access->addr = HEADER_SECOND(regaddr);
 	access->length = HEADER_THIRD(wrbytes);
 	memcpy(access->data, buf, wrbytes);
@@ -48,13 +49,15 @@ regread(
 		int fd,
 		int chipid,
 		int regaddr,
-		void* rxbuf,
-		int rdbytes
+		void* buf,
+		int rdbytes,
+		bool verbose
 		)
 {
-	BNT_CHECK_NULL(rxbuf, -1);
+	BNT_CHECK_NULL(buf, -1);
 
 	unsigned char txbuf[MAX_LENGTH_BNT_SPI] = {0,};
+	unsigned char rxbuf[MAX_LENGTH_BNT_SPI] = {0,};
 	T_BntAccess* access = (T_BntAccess*)txbuf;
 	int txlen = 0;
 	int rxlen = 0;
@@ -67,8 +70,10 @@ regread(
 	txlen = LENGTH_SPI_MSG(0);
 	rxlen = rdbytes + LENGTH_SPI_PADDING_BYTE;
 
-	ret = do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen); //TODO: compare with do_read
+	ret = do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, verbose); //TODO: compare with do_read
 	BNT_CHECK_TRUE(ret >= 0, ret);
+
+	memcpy(buf, rxbuf, rdbytes);
 
 	return ret;
 }
@@ -95,7 +100,7 @@ regdump(
 
 	for(int i=0; i<ENDOF_BNT_REGISTERS; i++) {
 		access->addr = HEADER_SECOND(i);
-		do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen); 
+		do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
 		*(unsigned short*)(buf+(i<<1))= *(unsigned short*)rxbuf;
 	}
 
@@ -157,8 +162,9 @@ hello_there(
 		)
 {
 	unsigned short idr = 0;
-	regread(fd, chipid, IDR, &idr, SIZE_REG_DATA_BYTE);
+	regread(fd, chipid, IDR, &idr, SIZE_REG_DATA_BYTE, false);
 
+	idr = ntohs(idr);
 	BNT_INFO(("%s: chipid %d -- IDR %04X\n", __func__, chipid, idr)); 
 	
 	return (idr == ((IDR_SIGNATURE << I_IDR_SIGNATURE) | chipid)) ? 
@@ -266,7 +272,8 @@ bnt_read_mrr(
 			chipid,
 			MRR0,
 			mrr,
-			sizeof(*mrr)
+			sizeof(*mrr),
+			false
 		   );
 }
 
@@ -481,7 +488,8 @@ bnt_devscan(
 		return 0;
 	}
 
-	for(board=*nboards; board>1; board++) {
+	for(board=*nboards; board>1; board--) {
+		printf("%s: board %d chip count %d\n", __func__, board-1, chipcount[board-1]);
 		if(chipcount[board-1] != chipcount[board-2]) {
 			printf("Error! Wrong Configuration. Board %d/%d Chip count %d vs %d\n",
 					board-1, board-2, chipcount[board-1], chipcount[board-2]);

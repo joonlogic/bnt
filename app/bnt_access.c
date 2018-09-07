@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
 			  info.iswrite ? \
 			  regwrite(fd, info.chipid, info.addr, info.buf, 
 					  nbytes, info.isbcast) :
-			  regread(fd, info.chipid, info.addr, info.buf, nbytes);
+			  regread(fd, info.chipid, info.addr, info.buf, nbytes, false);
 
 		printf("[BNT REG %s] Board %d Chip %d %s\n", 
 				info.iswrite ? "WRITE" : "READ", csidx, info.chipid, 

@@ -160,7 +160,8 @@ bnt_init(
 					CHIPID_PHYSICAL(chip, handle), 
 					SSR,
 					&ssr,
-					sizeof(ssr)
+					sizeof(ssr),
+					false
 				   );
 
 			printf("%s:[%d][%d] SSR %04X (physical chip id %02X)\n", 

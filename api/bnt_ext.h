@@ -15,12 +15,12 @@
 
 extern int
 regwrite(int fd, int chipid, int regaddr, void* buf, int wrbytes, bool isbcast),
-regread(int fd, int chipid, int regaddr, void* buf, int rdbytes),
+regread(int fd, int chipid, int regaddr, void* buf, int rdbytes, bool verbose),
 regdump(int fd, int chipid, void* buf),
 do_open(int bus, int cs),
 do_read(int fd, void* buf, int len),
 do_write(int fd, void* buf, int len),
-do_spi_tx_rx(int fd, unsigned char* txbuf, unsigned char* rxbuf, int txlen, int rxlen),
+do_spi_tx_rx(int fd, unsigned char* txbuf, unsigned char* rxbuf, int txlen, int rxlen, bool verbose),
 do_config_gpio_irq(int gpiopin, int);
 
 extern void
