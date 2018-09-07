@@ -502,6 +502,7 @@ bnt_get_realnonce(
 	static const unsigned int window[256] = {
 		//refer to "nonce compensation by S/W" slide
 #ifdef FPGA
+		//8 Engines
 		[0] = 0xFFFFFFF8,
 		[0x30] = 0x3FFFFFF8,
 		[0x70] = 0x1FFFFFF8,
