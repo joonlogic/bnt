@@ -260,7 +260,7 @@ bnt_get_midstate(
 	return 0;
 };
 
-static int
+int
 bnt_read_mrr(
 		int fd,
 		int chipid,
@@ -292,7 +292,10 @@ bnt_test_validnonce(
 	}
 
 	//check nonce
-	if(bhash->bh.nonce != mrr->nonceout) {
+	unsigned int realnonce = 0;
+	realnonce = bnt_get_realnonce(mrr->nonceout, handle->mask);
+
+	if(bhash->bh.nonce != realnonce) {
 		BNT_INFO(("%s: mismatch nonce. bhash->bh.nonce %08X vs mrr->nonce %08X\n",
 				__func__, bhash->bh.nonce, mrr->nonceout));
 		return false;
@@ -371,7 +374,7 @@ bnt_getnonce(
 						CHIPID_PHYSICAL(chip, handle),
 						&mrr
 						);
-				if(mrr.workid == 0) continue; //means NO results
+				if(mrr.workid != bhash->workid) continue; //means NO results
 				isvalid = bnt_test_validnonce(bhash, &mrr, handle);
 				if(isvalid) {
 					//found it
@@ -499,20 +502,19 @@ bnt_devscan(
 
 unsigned int
 bnt_get_realnonce(
-		unsigned short mrr1,
-		unsigned short mrr2,
+		unsigned int mrr,
 		unsigned char mask
 		)
 {
-	unsigned int mrr;
 	unsigned int nonce;
 	static const unsigned int window[256] = {
 		//refer to "nonce compensation by S/W" slide
 #ifdef FPGA
-		[0] = 0xFFFFFFF0,
-		[0x30] = 0x3FFFFFF0,
-		[0x70] = 0x1FFFFFF0,
-		[0xF0] = 0x0FFFFFF0,
+		//8 Engines
+		[0] = 0xFFFFFFF8,
+		[0x30] = 0x3FFFFFF8,
+		[0x70] = 0x1FFFFFF8,
+		[0xF0] = 0x0FFFFFF8,
 #else
 		[0] = 0xFFFFFFC0,
 		[0x30] = 0x3FFFFFC0,
@@ -537,8 +539,6 @@ bnt_get_realnonce(
 		[0xFE] = 0x01FFFFC0,
 		[0xFF] = 0x00FFFFC0,
 	};
-
-	mrr = ((unsigned int)mrr1 << 16) | (unsigned int)mrr2;
 
 	nonce = (mrr & window[mask]) >> SHIFT_INTERNAL_HASH_ENGINES;
 	nonce -= 2; 

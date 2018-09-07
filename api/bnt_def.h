@@ -93,8 +93,8 @@
 	((ID_LOGICAL) << (HANDLE)->idshift)       
 
 #ifdef FPGA
-#define N_INTERNAL_HASH_ENGINES            16
-#define SHIFT_INTERNAL_HASH_ENGINES        4
+#define N_INTERNAL_HASH_ENGINES            8
+#define SHIFT_INTERNAL_HASH_ENGINES        3
 #else
 #define N_INTERNAL_HASH_ENGINES            64
 #define SHIFT_INTERNAL_HASH_ENGINES        6
