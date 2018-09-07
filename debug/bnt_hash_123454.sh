@@ -1,0 +1,4 @@
+mm=~/bnt/app/bnt_access 
+#$mm -w 01 0004
+$mm -w 03 000F
+$mm -w 06 -n 23 0054 F203 3E5C E784 23A3 A749 AAE0 B882 3890 F21C 8129 3CBC 957C 12E4 9F30 6B1B E73E 1c16 800c 4cc7 cb4d b393 6a1a

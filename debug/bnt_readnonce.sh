@@ -1,3 +1,3 @@
 md=~/bnt/app/bnt_access
 
-$md -r 1d -n 3 
+$md -r 1d -n 3
