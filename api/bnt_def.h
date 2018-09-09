@@ -165,19 +165,19 @@ typedef enum {
 #define I_PSR_PLL                           0
 #define V_PSR_PLL                           8
 
-#define I_IER_MINED                         0
-#define V_IER_MINED                         1
-#define I_IER_OVERHEAT                      1
+#define I_IER_OVERHEAT                      0
 #define V_IER_OVERHEAT                      1
+#define I_IER_MINED                         1
+#define V_IER_MINED                         1
 #define I_IER_RSLT_FIFO_ALMOST_FULL         2
 #define V_IER_RSLT_FIFO_ALMOST_FULL         1
 #define I_IER_BHV_FIFO_FULL                 3
 #define V_IER_BHV_FIFO_FULL                 1
 
-#define I_ISR_MINED                         0
-#define V_ISR_MINED                         1
-#define I_ISR_OVERHEAT                      1
+#define I_ISR_OVERHEAT                      0
 #define V_ISR_OVERHEAT                      1
+#define I_ISR_MINED                         1
+#define V_ISR_MINED                         1
 #define I_ISR_RSLT_FIFO_ALMOST_FULL         2
 #define V_ISR_RSLT_FIFO_ALMOST_FULL         1
 #define I_ISR_BHV_FIFO_FULL                 3

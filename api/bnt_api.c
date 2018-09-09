@@ -250,12 +250,26 @@ bnt_get_midstate(
 		)
 {
 	bool ret;
+	unsigned int le_data[16] = {0,};
+
+	memcpy(le_data, &bhash->bh, 64); 
+
+	for(int i=0; i<16; i++) 
+		le_data[i] = htonl(le_data[i]);
+
 	ret = bnt_gethash(
-			(unsigned char*)&bhash->bh,
+			(unsigned char*)le_data,
 			64,
 			bhash->midstate
 			);
 	BNT_CHECK_TRUE(ret, -1);
+
+	//debug
+	char str[129] = {0,};
+	bnt_hex2str((unsigned char*)le_data, 64, str);
+	printf("%s: Input 64byte : %s\n", __func__, str);
+	bnt_hex2str((unsigned char*)bhash->midstate, 32, str);
+	printf("%s: Output 64byte: %s\n", __func__, str);
 
 	return 0;
 };
@@ -317,7 +331,7 @@ void printout_bh(
     char outstr[65] = {0,};
     time_t ntime = bh->ntime;
 
-    printf("Version     : %08x\n", bh->version);
+    printf("Version     : %08x\n", ntohl(bh->version));
 
     bnt_hash2str(bh->prevhash, outstr);
     printf("Prev Hash   : %s\n", outstr);
@@ -325,9 +339,9 @@ void printout_bh(
     bnt_hash2str(bh->merkle, outstr);
     printf("Merkle Root : %s\n", outstr);
 
-    printf("Time Stamp  : (%08x) %s", bh->ntime, ctime(&ntime));
-    printf("Target      : %08x\n", bh->bits);
-    printf("Nonce       : %08x\n", bh->nonce);
+    printf("Time Stamp  : (%08x) %s", ntohl(bh->ntime), ctime(&ntime));
+    printf("Target      : %08x\n", ntohl(bh->bits));
+    printf("Nonce       : %08x\n", ntohl(bh->nonce));
 }
 
 void printout_hash(
@@ -380,7 +394,7 @@ bnt_getnonce(
 			}
 		}
 		sleep(1);
-		printf("%s: %d turn arround\n", __func__, count);
+		printf("%s: turn arround %d\n", __func__, count);
 	} while(count++ < THRESHOLD_GET_NONCE_COUNT);
 
 	printf("%s: Timedout. count %d\n", __func__, count);

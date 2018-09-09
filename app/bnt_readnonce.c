@@ -89,6 +89,7 @@ int main(int argc, char *argv[])
 	unsigned short mask = 0;
 	unsigned int realnonce = 0;
 	regread(spifd, info.chipid, SSR, &mask, sizeof(mask), false);
+	mask = ntohs(mask);
 	mask >>= I_SSR_MASK; 
 
 	printf("MASK       : %02X\n", mask);

@@ -164,6 +164,7 @@ bnt_init(
 					false
 				   );
 
+			ssr = ntohs(ssr);
 			printf("%s:[%d][%d] SSR %04X (physical chip id %02X)\n", 
 					__func__, board, chip, ssr, chip<<handle->idshift);
 			BNT_CHECK_TRUE(ssr==handle->ssr, -1);
@@ -223,7 +224,7 @@ int main(int argc, char *argv[])
 	T_BntHash bhash = {0,};
 
 	//open input blockheader file
-	handle.bhfp = fopen(info.infile, "r");
+	handle.bhfp = fopen(info.infile, "rb");
 	BNT_CHECK_NULL(handle.bhfp, -1);
 
 	//open SPI
@@ -239,10 +240,17 @@ int main(int argc, char *argv[])
 		BNT_CHECK_RESULT(ret, ret);
 
 		readlen = fread((void*)&bhash.bh, sizeof(bhash.bh), 1, handle.bhfp);
-		if(readlen != sizeof(bhash.bh)) break;
+		if(readlen < 0) break;
+
+		//joon for debug
+//		unsigned int* le_swap = (unsigned int*)&bhash;
+//		for(int i=0; i<16; i++) {
+//			*le_swap = ntohl(*le_swap);
+//			le_swap++;
+//		}
 
 		ret = bnt_get_midstate(&bhash);
-		BNT_CHECK_TRUE(ret, -1);
+		BNT_CHECK_RESULT(ret, -1);
 		
 		printout_bh(&bhash.bh);
 		printout_hash(bhash.midstate);
