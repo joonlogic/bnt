@@ -26,7 +26,8 @@ regwrite(
 		int regaddr,
 		void* buf,
 		int wrbytes,
-		bool isbcast
+		bool isbcast,
+		bool verbose
 		)
 {
 	BNT_CHECK_NULL(buf, -1);
@@ -40,7 +41,7 @@ regwrite(
 	access->length = HEADER_THIRD(wrbytes);
 	memcpy(access->data, buf, wrbytes);
 
-	ret = do_write(fd, txbuf, LENGTH_SPI_MSG(wrbytes) + LENGTH_SPI_PADDING_BYTE);
+	ret = do_write(fd, txbuf, LENGTH_SPI_MSG(wrbytes) + LENGTH_SPI_PADDING_BYTE, verbose);
 	return ret - LENGTH_MSG_HEADER;
 }
 
@@ -123,7 +124,8 @@ bnt_write_all(
 				regaddr,
 				buf,
 				wrbytes,
-				(int)true
+				(int)true,
+				false
 				);
 	}
 }
@@ -142,8 +144,13 @@ bnt_request_hash(
 	memcpy(hvrs.midstate, hash->midstate, 32);
 	memcpy(&hvrs.merkle, &hash->bh.merkle[28], 12);
 
-	bnt_hex2str((unsigned char*)&hvrs, SIZE_TOTAL_HVR_BYTE, hvrs.strout);
-	BNT_INFO(("%s: HVR : %s\n", __func__, hvrs.strout));
+#ifdef DEBUG
+//	bnt_hex2str((unsigned char*)&hvrs, SIZE_TOTAL_HVR_BYTE, hvrs.strout);
+//	BNT_INFO(("%s: HVR : %s\n", __func__, hvrs.strout));
+#endif
+
+	//TODO: temporary
+	bnt_pop_fifo(0, 0, true, handle);
 
 	bnt_write_all(
 			HVR0, 
@@ -179,16 +186,52 @@ bnt_softreset(
 		)
 {
 	int regaddr = SSR;
-	unsigned short set = 1;
+	unsigned short set = htons(1);
 	unsigned short unset = 0;
 	int wrbytes = 2;
 
-	regwrite(fd, chipid, regaddr, &set, wrbytes, broadcast);
+	regwrite(fd, chipid, regaddr, &set, wrbytes, broadcast, false);
 
 	usleep(100000); //100ms TODO: check the exact value
 
 	//release
-	regwrite(fd, chipid, regaddr, &unset, wrbytes, broadcast);
+	regwrite(fd, chipid, regaddr, &unset, wrbytes, broadcast, false);
+
+	return 0;
+}
+
+int 
+bnt_pop_fifo(
+		int fd,
+		int chipid,
+		bool broadcast,
+		T_BntHandle* handle
+		)
+{
+	unsigned short ier = 0;
+	unsigned short set = 0;
+	unsigned short unset = 0;
+
+	regread(handle->spifd[0], 0, IER, &ier, sizeof(ier), false);
+	ier = ntohs(ier);
+
+	unset = htons(ier & (~(1 << I_IER_MINED)));
+	set = htons(ier | (1 << I_IER_MINED)); 
+
+
+	if(broadcast)
+		for(int i=0; i<handle->nboards; i++) 
+			regwrite(handle->spifd[i], chipid, IER, &unset, sizeof(ier), broadcast, false);
+	else
+			regwrite(fd, chipid, IER, &unset, sizeof(ier), broadcast, false);
+
+	usleep(1000); //1ms TODO: check the exact value
+
+	if(broadcast)
+		for(int i=0; i<handle->nboards; i++) 
+			regwrite(handle->spifd[i], chipid, IER, &set, sizeof(ier), broadcast, false);
+	else
+			regwrite(fd, chipid, IER, &set, sizeof(ier), broadcast, false);
 
 	return 0;
 }
@@ -254,22 +297,21 @@ bnt_get_midstate(
 
 	memcpy(le_data, &bhash->bh, 64); 
 
-	for(int i=0; i<16; i++) 
-		le_data[i] = htonl(le_data[i]);
-
-	ret = bnt_gethash(
+	ret = bnt_getmidhash(
 			(unsigned char*)le_data,
-			64,
 			bhash->midstate
 			);
 	BNT_CHECK_TRUE(ret, -1);
 
 	//debug
+	/*
 	char str[129] = {0,};
 	bnt_hex2str((unsigned char*)le_data, 64, str);
 	printf("%s: Input 64byte : %s\n", __func__, str);
+	memset(str, 0x00, sizeof(str));
 	bnt_hex2str((unsigned char*)bhash->midstate, 32, str);
 	printf("%s: Output 64byte: %s\n", __func__, str);
+	*/
 
 	return 0;
 };
@@ -304,9 +346,9 @@ bnt_test_validnonce(
 	unsigned int realnonce = 0;
 	realnonce = bnt_get_realnonce(mrr->nonceout, handle->mask);
 
-	if(bhash->bh.nonce != realnonce) {
-		BNT_INFO(("%s: mismatch nonce. bhash->bh.nonce %08X vs mrr->nonce %08X\n",
-				__func__, bhash->bh.nonce, mrr->nonceout));
+	if(ntohl(bhash->bh.nonce) != realnonce) {
+		BNT_INFO(("%s: mismatch nonce. bhash->bh.nonce %08X vs mrr->nonce %08X, realnonce %08X\n",
+				__func__, bhash->bh.nonce, mrr->nonceout, realnonce));
 		return false;
 	}
 
@@ -384,6 +426,10 @@ bnt_getnonce(
 						&mrr
 						);
 				if(mrr.workid != bhash->workid) continue; //means NO results
+
+				//TODO: temporary
+				bnt_pop_fifo(handle->spifd[board], CHIPID_PHYSICAL(chip, handle), false, handle);
+
 				isvalid = bnt_test_validnonce(bhash, &mrr, handle);
 				if(isvalid) {
 					//found it
@@ -394,7 +440,7 @@ bnt_getnonce(
 			}
 		}
 		sleep(1);
-		printf("%s: turn arround %d\n", __func__, count);
+		if(count%20 == 0) printf("%s: count %d\n", __func__, count);
 	} while(count++ < THRESHOLD_GET_NONCE_COUNT);
 
 	printf("%s: Timedout. count %d\n", __func__, count);

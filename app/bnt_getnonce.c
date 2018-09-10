@@ -15,6 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <time.h>
 #include <getopt.h>
 #include <arpa/inet.h>
 #include <bnt_def.h>
@@ -192,6 +193,7 @@ bnt_close(
 int main(int argc, char *argv[])
 {
 	int ret = 0;
+	time_t ntime;
 	unsigned int count = 0;
 	unsigned int readlen = 0;
 	char infile[MAX_FILENAME_STR]={0,};
@@ -224,7 +226,7 @@ int main(int argc, char *argv[])
 	T_BntHash bhash = {0,};
 
 	//open input blockheader file
-	handle.bhfp = fopen(info.infile, "rb");
+	handle.bhfp = fopen(info.infile, "r");
 	BNT_CHECK_NULL(handle.bhfp, -1);
 
 	//open SPI
@@ -235,19 +237,14 @@ int main(int argc, char *argv[])
 
 	//process one by one
 	do {
+		readlen = fread((void*)&bhash.bh, sizeof(bhash.bh), 1, handle.bhfp);
+		if(readlen <= 0) break;
+
 		//initialize
+		ntime = time(NULL);
+		printf("[[ %d ]] START %s -----------------------------------------\n", count, ctime(&ntime));
 		ret = bnt_init(&handle);
 		BNT_CHECK_RESULT(ret, ret);
-
-		readlen = fread((void*)&bhash.bh, sizeof(bhash.bh), 1, handle.bhfp);
-		if(readlen < 0) break;
-
-		//joon for debug
-//		unsigned int* le_swap = (unsigned int*)&bhash;
-//		for(int i=0; i<16; i++) {
-//			*le_swap = ntohl(*le_swap);
-//			le_swap++;
-//		}
 
 		ret = bnt_get_midstate(&bhash);
 		BNT_CHECK_RESULT(ret, -1);
@@ -255,14 +252,17 @@ int main(int argc, char *argv[])
 		printout_bh(&bhash.bh);
 		printout_hash(bhash.midstate);
 
-		bhash.workid == 0 ? bhash.workid++ : bhash.workid;
+		bhash.workid++ == 0xFF ? bhash.workid++ : bhash.workid;
 		ret = bnt_getnonce(&bhash, &handle);
 
-		printf("[%d] Workid %d Passed with %s.\n", 
-				count++, bhash.workid, ret == 0 ? "SUCCESS" : "FAIL");
+		ntime = time(NULL);
+		printf("[%d] Workid %d Passed with %s. TIME %s\n\n", 
+				count++, bhash.workid, ret == 0 ? "SUCCESS" : "FAIL", ctime(&ntime));
 
 	} while(1);
 
 	bnt_close(&handle);
+	printf("========= BYE ==============\n");
+
 	return ret;
 }

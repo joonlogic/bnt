@@ -35,7 +35,7 @@ int main(void)
 
 	//For sample file
 	char buf[64] = {0,};
-	sprintf(buf, "BH_%08d.bin", id);
+	sprintf(buf, "BH_%d.bin", id);
 	FILE* samplefp = fopen(buf, "w+");
 	if(!samplefp) {
 		printf("%s: Error opening file 2\n", __func__);

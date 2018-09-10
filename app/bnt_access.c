@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
 		ret = info.isdump ? regdump(fd, info.chipid, info.buf) :
 			  info.iswrite ? \
 			  regwrite(fd, info.chipid, info.addr, info.buf, 
-					  nbytes, info.isbcast) :
+					  nbytes, info.isbcast, false) :
 			  regread(fd, info.chipid, info.addr, info.buf, nbytes, false);
 
 		printf("[BNT REG %s] Board %d Chip %d %s\n", 

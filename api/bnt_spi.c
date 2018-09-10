@@ -65,7 +65,8 @@ int
 do_write(
 		int fd, 
 		void* buf,
-		int len
+		int len,
+		bool verbose
 	   )
 {
 	int ret = 0;
@@ -75,7 +76,7 @@ do_write(
 	BNT_CHECK_TRUE(ret == len, ret);
 
 #ifdef DEBUG
-	hexdump(buf, len, 16, "WRITE");
+	if(verbose) hexdump(buf, len, 16, "WRITE");
 #endif
 
 	return ret;

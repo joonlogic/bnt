@@ -78,6 +78,24 @@ printreg(
 	printf("\n");
 }
 
+bool bnt_getmidhash(
+		unsigned char* input, 
+		unsigned char* out
+		)
+{
+	SHA256_CTX context;
+	if(!SHA256_Init(&context)) return false;
+	if(!SHA256_Update(&context, input, 64)) return false;
+
+	unsigned int* hashp = (unsigned int*)context.h;
+	unsigned int* outp = (unsigned int*)out;
+
+	for(int i=0; i<8; i++) 
+		outp[7-i] = htonl(*(unsigned int*)hashp++);
+
+	return true;
+}
+
 bool bnt_gethash(
 		unsigned char* input, 
 		unsigned int   length, 
