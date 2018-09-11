@@ -172,7 +172,7 @@ hello_there(
 	regread(fd, chipid, IDR, &idr, SIZE_REG_DATA_BYTE, false);
 
 	idr = ntohs(idr);
-	BNT_INFO(("%s: chipid %d -- IDR %04X\n", __func__, chipid, idr)); 
+	BNT_INFO(("\t[ %02d (0x%02X) ] IDR %04X\n", chipid, chipid, idr)); 
 	
 	return (idr == ((IDR_SIGNATURE << I_IDR_SIGNATURE) | chipid)) ? 
 		true : false;
@@ -518,20 +518,20 @@ bnt_devscan(
 		spifd[board] = do_open(0, board);
 		if(spifd[board] < 0) break;
 
-		printf("\n\t[Board %d] : ", board);
+		printf("\n[Board %d] : ", board);
 		for(chip=0; chip<MAX_NCHIPS_PER_BOARD; chip++) {
 			if(hello_there(spifd[board], chip)) {
-				putchar('O');
+//				putchar('O');
 				chipcount[board]++;
 			}
 			else {
-				putchar('.');
+//				putchar('.');
 			}
 
-			if(chip % 8 == 7) putchar(' ');
+//			if(chip % 8 == 7) putchar(' ');
 		}
 
-		printf("\n\t\t nChips %d\n", chipcount[board]);
+		printf("\nnChips %d\n", chipcount[board]);
 		close(spifd[board]);
 	}
 
