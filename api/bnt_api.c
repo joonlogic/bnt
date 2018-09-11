@@ -102,7 +102,33 @@ regdump(
 	for(int i=0; i<ENDOF_BNT_REGISTERS; i++) {
 		access->addr = HEADER_SECOND(i);
 		do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
-		*(unsigned short*)(buf+(i<<1))= *(unsigned short*)rxbuf;
+		*(unsigned short*)(buf+(i<<1)) = *(unsigned short*)rxbuf;
+	}
+
+	return 0;
+}
+
+int 
+regscan(
+		int fd,
+		void* buf
+		)
+{
+	BNT_CHECK_NULL(buf, -1);
+
+	unsigned char txbuf[MAX_LENGTH_BNT_SPI] = {0,};
+	unsigned char rxbuf[MAX_LENGTH_BNT_SPI] = {0,};
+	T_BntAccess* access = (T_BntAccess*)txbuf;
+	int txlen = LENGTH_SPI_MSG(0);
+	int rxlen = SIZE_REG_DATA_BYTE + LENGTH_SPI_PADDING_BYTE;
+
+	for(int chipid=0; chipid<MAX_NCHIPS_PER_BOARD; chipid++) {
+		access->cmdid = HEADER_FIRST(CMD_READ, CMD_UNICAST, chipid);
+		access->addr = HEADER_SECOND(IDR);
+		access->length = HEADER_THIRD(1);
+
+		do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
+		*(unsigned short*)(buf+(chipid<<1)) = *(unsigned short*)rxbuf;
 	}
 
 	return 0;

@@ -17,6 +17,7 @@ extern int
 regwrite(int fd, int chipid, int regaddr, void* buf, int wrbytes, bool isbcast, bool verbose),
 regread(int fd, int chipid, int regaddr, void* buf, int rdbytes, bool verbose),
 regdump(int fd, int chipid, void* buf),
+regscan(int fd, void* buf),
 do_open(int bus, int cs),
 do_read(int fd, void* buf, int len),
 do_write(int fd, void* buf, int len, bool verbose),

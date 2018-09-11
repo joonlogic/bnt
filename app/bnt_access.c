@@ -31,6 +31,7 @@ typedef struct {
 	int            verbose;
 	bool           isbcast;
 	bool           isdump;
+	bool           isidrscan;
 	int            iswrite;
 	unsigned char* buf;
 } T_AccessInfo;
@@ -46,6 +47,7 @@ static void print_usage(const char *prog)
 	     "  -d --dump     Dump all registers\n"
 	     "  -r --read     read\n"
 	     "  -w --write    write\n"
+	     "  -i --idrscan  get IDR registers\n"
 	     "  -v --verbose  Verbose (show tx/rx buffer)\n"
 	     "  REG_ADDR      register address (hex)\n"
 	     "  REG_VAL(s)    register value(s) (ex> A5A5 3C3C ...)\n");
@@ -62,14 +64,15 @@ static int parse_opts(int argc, char *argv[], T_AccessInfo* info)
 			{ "speed",   1, 0, 's' },
 			{ "read",    1, 0, 'r' },
 			{ "write",   1, 0, 'w' },
+			{ "dump",    0, 0, 'd' },
 			{ "all",     0, 0, 'a' },
-			{ "all",     0, 0, 'd' },
+			{ "idrscan", 0, 0, 'i' },
 			{ "verbose", 0, 0, 'v' },
 			{ NULL,      0, 0, 0 },
 		};
 		int c;
 
-		c = getopt_long(argc, argv, "b:c:n:s:r:w:adv", lopts, NULL);
+		c = getopt_long(argc, argv, "b:c:n:s:r:w:avid", lopts, NULL);
 
 		if (c == -1)
 			break;
@@ -92,6 +95,9 @@ static int parse_opts(int argc, char *argv[], T_AccessInfo* info)
 			break;
 		case 'a':
 			info->isbcast = true;
+			break;
+		case 'i':
+			info->isidrscan = true;
 			break;
 		case 'd':
 			info->isdump = true;
@@ -195,10 +201,11 @@ int main(int argc, char *argv[])
 		nbytes = info.count << 1;
 
 		ret = info.isdump ? regdump(fd, info.chipid, info.buf) :
+			  info.isidrscan ? regscan(fd, info.buf) :
 			  info.iswrite ? \
-			  regwrite(fd, info.chipid, info.addr, info.buf, 
-					  nbytes, info.isbcast, false) :
-			  regread(fd, info.chipid, info.addr, info.buf, nbytes, false);
+				  regwrite(fd, info.chipid, info.addr, info.buf, 
+						  nbytes, info.isbcast, false) :
+				  regread(fd, info.chipid, info.addr, info.buf, nbytes, false);
 
 		printf("[BNT REG %s] Board %d Chip %d %s\n", 
 				info.iswrite ? "WRITE" : "READ", csidx, info.chipid, 
@@ -206,7 +213,8 @@ int main(int argc, char *argv[])
 
 		info.isdump ? \
 			printreg(info.buf, ENDOF_BNT_REGISTERS, 0x00) :
-			printreg(info.buf, info.count, info.addr);
+			info.isidrscan ? printreg(info.buf, MAX_NCHIPS_PER_BOARD, 0x00) :
+				printreg(info.buf, info.count, info.addr);
 		close(fd);
 	} while(csidx++ < cs_end);
 
