@@ -208,8 +208,10 @@ int main(int argc, char *argv[])
 				  regread(fd, info.chipid, info.addr, info.buf, nbytes, false);
 
 		printf("[BNT REG %s] Board %d Chip %d %s\n", 
-				info.iswrite ? "WRITE" : "READ", csidx, info.chipid, 
-				info.iswrite ? info.isbcast ? "Broadcast" : "" : "");
+				info.isidrscan ? "IDR SCAN" :
+					info.iswrite ? "WRITE" : "READ", csidx, info.chipid, 
+				info.iswrite ? info.isbcast ? "Broadcast" : "" : 
+					info.isidrscan ? "~ 64" : "");
 
 		info.isdump ? \
 			printreg(info.buf, ENDOF_BNT_REGISTERS, 0x00) :
