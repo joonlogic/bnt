@@ -41,7 +41,7 @@ regwrite(
 	access->length = HEADER_THIRD(wrbytes);
 	memcpy(access->data, buf, wrbytes);
 
-	ret = do_write(fd, txbuf, LENGTH_SPI_MSG(wrbytes) + LENGTH_SPI_PADDING_BYTE, verbose);
+	ret = bnt_spi_write(fd, txbuf, LENGTH_SPI_MSG(wrbytes) + LENGTH_SPI_PADDING_BYTE, verbose);
 	return ret - LENGTH_MSG_HEADER;
 }
 
@@ -71,7 +71,7 @@ regread(
 	txlen = LENGTH_SPI_MSG(0);
 	rxlen = rdbytes + LENGTH_SPI_PADDING_BYTE;
 
-	ret = do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, verbose); //TODO: compare with do_read
+	ret = bnt_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, verbose); //TODO: compare with bnt_spi_read
 	BNT_CHECK_TRUE(ret >= 0, ret);
 
 	memcpy(buf, rxbuf, rdbytes);
@@ -101,7 +101,7 @@ regdump(
 
 	for(int i=0; i<ENDOF_BNT_REGISTERS; i++) {
 		access->addr = HEADER_SECOND(i);
-		do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
+		bnt_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
 		*(unsigned short*)(buf+(i<<1)) = *(unsigned short*)rxbuf;
 	}
 
@@ -127,7 +127,7 @@ regscan(
 		access->addr = HEADER_SECOND(IDR);
 		access->length = HEADER_THIRD(1);
 
-		do_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
+		bnt_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
 		*(unsigned short*)(buf+(chipid<<1)) = *(unsigned short*)rxbuf;
 	}
 
@@ -485,7 +485,7 @@ bnt_detect(
 
 	puts("BNT_DETECT : ");
 	for(board=0; board<MAX_NBOARDS; board++) {
-		spifd[board] = do_open(0, board);
+		spifd[board] = bnt_spi_open(0, board);
 		if(spifd[board] < 0) break;
 
 		chip = 0;
@@ -541,7 +541,7 @@ bnt_devscan(
 
 	puts("BNT DEVICE SCAN : ");
 	for(board=0; board<MAX_NBOARDS; board++) {
-		spifd[board] = do_open(0, board);
+		spifd[board] = bnt_spi_open(0, board);
 		if(spifd[board] < 0) break;
 
 		printf("\n[Board %d] : ", board);

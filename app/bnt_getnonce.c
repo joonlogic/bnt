@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
 
 	//open SPI
 	for(int i=0; i<handle.nboards; i++) {
-		handle.spifd[i] = do_open(0, i);
+		handle.spifd[i] = bnt_spi_open(0, i);
 		BNT_CHECK_TRUE(handle.spifd[i] > 0, -1);
 	}
 

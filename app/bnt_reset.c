@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 
 	if(info.allboards) {
 		for(int board=0; board<MAX_NBOARDS; board++) {
-			spifd = do_open(0, board);
+			spifd = bnt_spi_open(0, board);
 			if(spifd < 0) break;
 
 			bnt_softreset(spifd, 0, true);
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	else if(info.allchips) {
-		spifd = do_open(0, info.boardid);
+		spifd = bnt_spi_open(0, info.boardid);
 		if(spifd < 0) {
 			printf("NOT DETECTED BOARD %d\n", info.boardid);
 			return 0;
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 		close(spifd);
 	}
 	else {
-		spifd = do_open(0, info.boardid);
+		spifd = bnt_spi_open(0, info.boardid);
 		if(spifd < 0) {
 			printf("NOT DETECTED BOARD %d\n", info.boardid);
 			return 0;

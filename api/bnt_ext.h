@@ -18,11 +18,11 @@ regwrite(int fd, int chipid, int regaddr, void* buf, int wrbytes, bool isbcast, 
 regread(int fd, int chipid, int regaddr, void* buf, int rdbytes, bool verbose),
 regdump(int fd, int chipid, void* buf),
 regscan(int fd, void* buf),
-do_open(int bus, int cs),
-do_read(int fd, void* buf, int len),
-do_write(int fd, void* buf, int len, bool verbose),
-do_spi_tx_rx(int fd, unsigned char* txbuf, unsigned char* rxbuf, int txlen, int rxlen, bool verbose),
-do_config_gpio_irq(int gpiopin, int);
+bnt_spi_open(int bus, int cs),
+bnt_spi_read(int fd, void* buf, int len),
+bnt_spi_write(int fd, void* buf, int len, bool verbose),
+bnt_spi_tx_rx(int fd, unsigned char* txbuf, unsigned char* rxbuf, int txlen, int rxlen, bool verbose),
+bnt_config_gpio_irq(int gpiopin, int);
 
 extern void
 hexdump(const void *src, size_t length, size_t line_size, char *prefix),

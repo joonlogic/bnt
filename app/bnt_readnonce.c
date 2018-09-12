@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 
 	int spifd = 0;
 
-	spifd = do_open(0, info.boardid);
+	spifd = bnt_spi_open(0, info.boardid);
 	if(spifd < 0) {
 		printf("NOT DETECTED BOARD %d\n", info.boardid);
 		return 0;

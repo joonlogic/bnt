@@ -25,7 +25,7 @@
 #include "bnt_ext.h"
 
 int
-do_open( 
+bnt_spi_open( 
 		int bus,  
 		int cs
 )
@@ -42,7 +42,7 @@ do_open(
 } 
 
 int 
-do_read(
+bnt_spi_read(
 		int fd, 
 		void* buf,
 		int len
@@ -62,7 +62,7 @@ do_read(
 }
 
 int 
-do_write(
+bnt_spi_write(
 		int fd, 
 		void* buf,
 		int len,
@@ -83,7 +83,7 @@ do_write(
 }
 
 int 
-do_spi_tx_rx(
+bnt_spi_tx_rx(
 		int fd,
 		unsigned char* txbuf,
 		unsigned char* rxbuf,
@@ -134,7 +134,7 @@ do_spi_tx_rx(
  * RETURN : fd when open "/sys/class/gpio/gpio(n)/value"
  */
 int
-do_config_gpio_irq(
+bnt_config_gpio_irq(
 		int gpiopin,
 		int disable
 		)

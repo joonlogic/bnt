@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
 
 	int csidx = cs_start;
 	do {
-		fd = do_open(BUS_SPI(0), csidx); 
+		fd = bnt_spi_open(BUS_SPI(0), csidx); 
 		if(fd < 0) {
 			printf("%s: SPI open error. board %d cs %d fd %d\n", 
 					argv[0], 0, csidx, fd);

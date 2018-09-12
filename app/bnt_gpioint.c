@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 
 	if( info.isall ) {
 		for(int i=0; i<sizeof(BNT_GPIO_IRQ)/sizeof(int); i++) {
-			fd[i] = do_config_gpio_irq(BNT_GPIO_IRQ[i], info.unexport);
+			fd[i] = bnt_config_gpio_irq(BNT_GPIO_IRQ[i], info.unexport);
 			printf("GPIO(%d) fd(%d)\n", BNT_GPIO_IRQ[i], fd[i]);
 			pfd[i].fd = fd[i];
 			pfd[i].events = POLLPRI | POLLERR;
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 		ppfd = pfd;
 	}
 	else {
-		fd[info.boardid] = do_config_gpio_irq(BNT_GPIO_IRQ[info.boardid], info.unexport);
+		fd[info.boardid] = bnt_config_gpio_irq(BNT_GPIO_IRQ[info.boardid], info.unexport);
 		printf("GPIO(%d) fd(%d)\n", BNT_GPIO_IRQ[info.boardid], fd[info.boardid]);
 		pfd[info.boardid].fd = fd[info.boardid];
 		pfd[info.boardid].events = POLLPRI | POLLERR;
