@@ -145,15 +145,15 @@ bnt_init(
 	handle->idshift = bnt_get_id_shift(handle->nchips);
 	handle->ssr = ((unsigned short)handle->mask) << I_SSR_MASK;
 
+	unsigned short ssr = htons(handle->ssr);
 	bnt_write_all(
 			SSR, 
-			&handle->ssr, 
-			sizeof(handle->ssr),
+			&ssr,
+			sizeof(ssr),
 			handle
 			);
 
 	//Verify and logging
-	unsigned short ssr = 0;
 	for(int board=0; board<handle->nboards; board++) {
 		for(int chip=0; chip<handle->nchips; chip++) {
 			regread(
@@ -165,9 +165,9 @@ bnt_init(
 					false
 				   );
 
-			ssr = ntohs(ssr);
-			printf("%s:[%d][%d] SSR %04X (physical chip id %02X)\n", 
-					__func__, board, chip, ssr, chip<<handle->idshift);
+			ssr = ntohs(ssr) & 0xFF00;
+			printf("%s:[%d][%02d] SSR %04X\n", 
+					__func__, board, CHIPID_PHYSICAL(chip, handle), ssr); 
 			BNT_CHECK_TRUE(ssr==handle->ssr, -1);
 			ssr = 0; 
 		}

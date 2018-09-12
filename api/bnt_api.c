@@ -176,7 +176,7 @@ bnt_request_hash(
 #endif
 
 	//TODO: temporary
-	bnt_pop_fifo(0, 0, true, handle);
+//	bnt_pop_fifo(0, 0, true, handle);
 
 	bnt_write_all(
 			HVR0, 
@@ -454,7 +454,7 @@ bnt_getnonce(
 				if(mrr.workid != bhash->workid) continue; //means NO results
 
 				//TODO: temporary
-				bnt_pop_fifo(handle->spifd[board], CHIPID_PHYSICAL(chip, handle), false, handle);
+//				bnt_pop_fifo(handle->spifd[board], CHIPID_PHYSICAL(chip, handle), false, handle);
 
 				isvalid = bnt_test_validnonce(bhash, &mrr, handle);
 				if(isvalid) {
