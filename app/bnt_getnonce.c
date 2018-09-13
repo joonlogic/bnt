@@ -27,6 +27,7 @@ typedef struct {
 	int            nchips;
 	char*          infile;
 	char*          outfile;
+	bool           fast;
 	bool           autodetect;
 } T_OptInfo;
 
@@ -36,6 +37,7 @@ static void print_usage(const char *prog)
 			prog);
 	puts("  -b --nboards  number of boards in system. Range(1~4)\n"
 	     "  -c --nchips   number of chips per board. Range(1~64)\n"
+	     "  -f --fast     fast mode (high speed clock)\n"
 	     "  -r --read     input block header sample file\n"
 	     "  -w --write    write log to file (NYI)\n");
 	exit(1);
@@ -48,6 +50,7 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 			{ "nboards", 1, 0, 'b' },
 			{ "nchips",  1, 0, 'c' },
 			{ "auto",    0, 0, 'a' },
+			{ "fast",    0, 0, 'f' },
 			{ "help",    0, 0, 'h' },
 			{ "read",    1, 0, 'r' },
 			{ "write",   1, 0, 'w' },
@@ -55,7 +58,7 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 		};
 		int c;
 
-		c = getopt_long(argc, argv, "b:c:r:w:ah", lopts, NULL);
+		c = getopt_long(argc, argv, "b:c:r:w:fah", lopts, NULL);
 
 		if (c == -1)
 			break;
@@ -77,6 +80,9 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 				break;
 			case 'w':
 				strcpy(info->outfile, optarg);
+				break;
+			case 'f':
+				info->fast = true;
 				break;
 			case 'h':
 			default:
@@ -128,7 +134,8 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 
 int 
 bnt_init(
-		T_BntHandle* handle
+		T_BntHandle* handle,
+		T_OptInfo* info 
 		)
 {
 	//reset
@@ -152,6 +159,18 @@ bnt_init(
 			sizeof(ssr),
 			handle
 			);
+
+#ifdef FPGA
+	if(info->fast) {
+		unsigned short psr = htons(0x0001);
+		bnt_write_all(
+				PSR,
+				&psr,
+				sizeof(psr),
+				handle
+				);
+	}
+#endif
 
 	//Verify and logging
 	for(int board=0; board<handle->nboards; board++) {
@@ -193,7 +212,7 @@ bnt_close(
 int main(int argc, char *argv[])
 {
 	int ret = 0;
-	time_t ntime;
+	time_t ntime, start_time;
 	unsigned int count = 0;
 	unsigned int readlen = 0;
 	char infile[MAX_FILENAME_STR]={0,};
@@ -242,8 +261,9 @@ int main(int argc, char *argv[])
 
 		//initialize
 		ntime = time(NULL);
+		start_time = ntime;
 		printf("[[ %d ]] START %s -----------------------------------------\n", count, ctime(&ntime));
-		ret = bnt_init(&handle);
+		ret = bnt_init(&handle, &info);
 		BNT_CHECK_RESULT(ret, ret);
 
 		ret = bnt_get_midstate(&bhash);
@@ -256,13 +276,12 @@ int main(int argc, char *argv[])
 		ret = bnt_getnonce(&bhash, &handle);
 
 		ntime = time(NULL);
-		printf("[%d] Workid %d Passed with %s. TIME %s\n\n", 
-				count++, bhash.workid, ret == 0 ? "SUCCESS" : "FAIL", ctime(&ntime));
+		printf("[%d] Workid %d Passed with %s. ( %ld sec consumed ) : TIME %s. \n\n", 
+				count++, bhash.workid, ret == 0 ? "SUCCESS" : "FAIL", ntime - start_time, ctime(&ntime));
 
 	} while(1);
 
 	bnt_close(&handle);
-	printf("========= BYE ==============\n");
 
 	return ret;
 }
