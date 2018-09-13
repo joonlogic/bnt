@@ -25,13 +25,14 @@
 typedef struct {
 	int            boardid;
 	int            chipid;
+	int            nchips;
 	int            count;
 	int            addr;
 	unsigned int   speed;
 	int            verbose;
 	bool           isbcast;
 	bool           isdump;
-	bool           isidrscan;
+	bool           isregscan;
 	int            iswrite;
 	unsigned char* buf;
 } T_AccessInfo;
@@ -47,7 +48,7 @@ static void print_usage(const char *prog)
 	     "  -d --dump     Dump all registers\n"
 	     "  -r --read     read\n"
 	     "  -w --write    write\n"
-	     "  -i --idrscan  get IDR registers\n"
+	     "  -i --regscan  get registers for each chips\n"
 	     "  -v --verbose  Verbose (show tx/rx buffer)\n"
 	     "  REG_ADDR      register address (hex)\n"
 	     "  REG_VAL(s)    register value(s) (ex> A5A5 3C3C ...)\n");
@@ -66,13 +67,13 @@ static int parse_opts(int argc, char *argv[], T_AccessInfo* info)
 			{ "write",   1, 0, 'w' },
 			{ "dump",    0, 0, 'd' },
 			{ "all",     0, 0, 'a' },
-			{ "idrscan", 0, 0, 'i' },
+			{ "regscan", 1, 0, 'i' },
 			{ "verbose", 0, 0, 'v' },
 			{ NULL,      0, 0, 0 },
 		};
 		int c;
 
-		c = getopt_long(argc, argv, "b:c:n:s:r:w:avid", lopts, NULL);
+		c = getopt_long(argc, argv, "b:c:n:s:r:w:i:avd", lopts, NULL);
 
 		if (c == -1)
 			break;
@@ -97,7 +98,8 @@ static int parse_opts(int argc, char *argv[], T_AccessInfo* info)
 			info->isbcast = true;
 			break;
 		case 'i':
-			info->isidrscan = true;
+			info->isregscan = true;
+			info->nchips = atoi(optarg);
 			break;
 		case 'd':
 			info->isdump = true;
@@ -201,21 +203,21 @@ int main(int argc, char *argv[])
 		nbytes = info.count << 1;
 
 		ret = info.isdump ? regdump(fd, info.chipid, info.buf) :
-			  info.isidrscan ? regscan(fd, info.buf) :
+			  info.isregscan ? regscan(fd, info.addr, info.buf, info.nchips) :
 			  info.iswrite ? \
 				  regwrite(fd, info.chipid, info.addr, info.buf, 
 						  nbytes, info.isbcast, false) :
 				  regread(fd, info.chipid, info.addr, info.buf, nbytes, false);
 
 		printf("[BNT REG %s] Board %d Chip %d %s\n", 
-				info.isidrscan ? "IDR SCAN" :
+				info.isregscan ? "REGISTER SCAN" :
 					info.iswrite ? "WRITE" : "READ", csidx, info.chipid, 
 				info.iswrite ? info.isbcast ? "Broadcast" : "" : 
-					info.isidrscan ? "~ 64" : "");
+					info.isregscan ? "~ 64" : "");
 
 		info.isdump ? \
 			printreg(info.buf, ENDOF_BNT_REGISTERS, 0x00) :
-			info.isidrscan ? printreg(info.buf, MAX_NCHIPS_PER_BOARD, 0x00) :
+			info.isregscan ? printreg(info.buf, MAX_NCHIPS_PER_BOARD, 0x00) :
 				printreg(info.buf, info.count, info.addr);
 		close(fd);
 	} while(csidx++ < cs_end);

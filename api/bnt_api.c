@@ -111,7 +111,9 @@ regdump(
 int 
 regscan(
 		int fd,
-		void* buf
+		int addr,
+		void* buf,
+		int nchips
 		)
 {
 	BNT_CHECK_NULL(buf, -1);
@@ -121,10 +123,13 @@ regscan(
 	T_BntAccess* access = (T_BntAccess*)txbuf;
 	int txlen = LENGTH_SPI_MSG(0);
 	int rxlen = SIZE_REG_DATA_BYTE + LENGTH_SPI_PADDING_BYTE;
+	int idstep = 0;
 
-	for(int chipid=0; chipid<MAX_NCHIPS_PER_BOARD; chipid++) {
+	idstep = 1 << bnt_get_id_shift(nchips);
+
+	for(int chipid=0; chipid<MAX_NCHIPS_PER_BOARD; chipid += idstep) {
 		access->cmdid = HEADER_FIRST(CMD_READ, CMD_UNICAST, chipid);
-		access->addr = HEADER_SECOND(IDR);
+		access->addr = HEADER_SECOND(addr);
 		access->length = HEADER_THIRD(1);
 
 		bnt_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
@@ -219,6 +224,7 @@ bnt_softreset(
 	regwrite(fd, chipid, regaddr, &set, wrbytes, broadcast, false);
 
 	usleep(100000); //100ms TODO: check the exact value
+	//sleep(1);
 
 	//release
 	regwrite(fd, chipid, regaddr, &unset, wrbytes, broadcast, false);
@@ -373,8 +379,8 @@ bnt_test_validnonce(
 	realnonce = bnt_get_realnonce(mrr->nonceout, handle->mask);
 
 	if(ntohl(bhash->bh.nonce) != realnonce) {
-		BNT_INFO(("%s: mismatch nonce. bhash->bh.nonce %08X vs mrr->nonce %08X, realnonce %08X\n",
-				__func__, bhash->bh.nonce, mrr->nonceout, realnonce));
+		BNT_INFO(("%s: mismatch. bhash->bh.nonce %08X vs mrr %08X ( realnonce %08X )\n",
+				__func__, ntohl(bhash->bh.nonce), mrr->nonceout, realnonce));
 		return false;
 	}
 
@@ -389,7 +395,7 @@ bnt_printout_validnonce(
 		)
 {
 	printf("((FOUND)) [%d][%02d] nonce %08x\n",
-			board, chip, bhash->bh.nonce);
+			board, chip, htonl(bhash->bh.nonce));
 }
 
 void printout_bh(

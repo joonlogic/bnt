@@ -39,7 +39,7 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 		static const struct option lopts[] = {
 			{ "boardid", 1, 0, 'b' },
 			{ "chipid",  1, 0, 'c' },
-			{ "help",    0, 0, 'v' },
+			{ "help",    0, 0, 'h' },
 			{ NULL,      0, 0, 0 },
 		};
 		int c;

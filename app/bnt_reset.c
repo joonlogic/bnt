@@ -25,6 +25,7 @@ typedef struct {
 	int            chipid;
 	bool           allboards;
 	bool           allchips;
+	bool           verbose;
 } T_OptInfo;
 
 static void print_usage(const char *prog)
@@ -32,6 +33,7 @@ static void print_usage(const char *prog)
 	printf("Usage: %s [-b] [boardid] [-c] [chipid] \n", prog);
 	puts("  -b --boardid  board id(default 0). Range(0~3)\n"
 	     "  -c --chipid   SPI chip id(default 0). Range(0~63)\n"
+	     "  -v --verbose  No Verbose (No Asking are you sure.)\n"
 		 "  'no args' means all boards & all chips\n");
 	exit(1);
 }
@@ -42,12 +44,13 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 		static const struct option lopts[] = {
 			{ "boardid", 1, 0, 'b' },
 			{ "chipid",  1, 0, 'c' },
-			{ "help",    0, 0, 'v' },
+			{ "verbose", 0, 0, 'v' },
+			{ "help",    0, 0, 'h' },
 			{ NULL,      0, 0, 0 },
 		};
 		int c;
 
-		c = getopt_long(argc, argv, "b:c:h", lopts, NULL);
+		c = getopt_long(argc, argv, "b:c:hv", lopts, NULL);
 
 		if (c == -1)
 			break;
@@ -61,6 +64,9 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 			info->chipid = atoi(optarg);
 			info->allboards = false;
 			info->allchips = false;
+			break;
+		case 'v':
+			info->verbose = false;
 			break;
 		case 'h':
 		default:
@@ -78,6 +84,7 @@ int main(int argc, char *argv[])
 	T_OptInfo info = {
 		.allboards = true,
 		.allchips = true,
+		.verbose = true,
 	};
 
 	ret = parse_opts(argc, argv, &info);
@@ -93,10 +100,12 @@ int main(int argc, char *argv[])
 		printf("Chip id %d(0x%X) on Board %d to be reset. ", 
 				info.chipid, info.chipid, info.boardid);
 
-	printf("Are You Sure? (Y/N) : ");
+	if(info.verbose == true) {
+		printf("Are You Sure? (Y/N) : ");
 
-	sure = fgetc(stdin);
-	if(sure != 'y' && sure != 'Y') return 0;
+		sure = fgetc(stdin);
+		if(sure != 'y' && sure != 'Y') return 0;
+	}
 
 	if(info.allboards) {
 		for(int board=0; board<MAX_NBOARDS; board++) {

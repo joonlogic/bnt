@@ -7,6 +7,7 @@ TARGET =  bnt_access
 TARGET += spidev_test
 TARGET += bnt_gpioint
 TARGET += bnt_getnonce
+TARGET += bnt_gethash
 TARGET += bnt_reset
 TARGET += bnt_devscan
 TARGET += bnt_readnonce
@@ -38,6 +39,9 @@ bnt_gpioint: bnt_gpioint.c $(BNT_LIB)
 	$(CC) -Wall $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
 
 bnt_getnonce: bnt_getnonce.c $(BNT_LIB)
+	$(CC) -Wall $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
+
+bnt_gethash: bnt_gethash.c $(BNT_LIB)
 	$(CC) -Wall $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
 
 bnt_reset: bnt_reset.c $(BNT_LIB)

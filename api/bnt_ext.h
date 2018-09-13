@@ -17,7 +17,7 @@ extern int
 regwrite(int fd, int chipid, int regaddr, void* buf, int wrbytes, bool isbcast, bool verbose),
 regread(int fd, int chipid, int regaddr, void* buf, int rdbytes, bool verbose),
 regdump(int fd, int chipid, void* buf),
-regscan(int fd, void* buf),
+regscan(int fd, int addr, void* buf, int nchips),
 bnt_spi_open(int bus, int cs),
 bnt_spi_read(int fd, void* buf, int len),
 bnt_spi_write(int fd, void* buf, int len, bool verbose),
