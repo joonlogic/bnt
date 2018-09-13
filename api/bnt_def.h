@@ -100,6 +100,7 @@
 #define SHIFT_INTERNAL_HASH_ENGINES        6
 #endif
 
+#define LAST_CHIPID(NCHIPS)                (MAX_NCHIPS_PER_BOARD - (MAX_NCHIPS_PER_BOARD/(NCHIPS)))
 
 /////
 ///// BNT registers
@@ -133,9 +134,9 @@ typedef enum {
     HVR17 = 0x17,   // (RW) Hash Value Set Register 17
     HVR18 = 0x18,   // (RW) Hash Value Set Register 18
     HVR19 = 0x19,   // (RW) Hash Value Set Register 19
-    HVR20 = 0x20,   // (RW) Hash Value Set Register 20
-    HVR21 = 0x21,   // (RW) Hash Value Set Register 21
-    HVR22 = 0x22,   // (RW) Hash Value Set Register 22
+    HVR20 = 0x1A,   // (RW) Hash Value Set Register 20
+    HVR21 = 0x1B,   // (RW) Hash Value Set Register 21
+    HVR22 = 0x1C,   // (RW) Hash Value Set Register 22
 
     MRR0 = 0x1D,   // (RO) Mining Result Register 0
     MRR1 = 0x1E,   // (RO) Mining Result Register 1

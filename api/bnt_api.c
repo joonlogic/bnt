@@ -193,17 +193,18 @@ bnt_request_hash(
 	return 0;
 }
 
-static bool
+bool
 hello_there(
 		int fd,
-		int chipid
+		int chipid,
+		bool verbose
 		)
 {
 	unsigned short idr = 0;
 	regread(fd, chipid, IDR, &idr, SIZE_REG_DATA_BYTE, false);
 
 	idr = ntohs(idr);
-	BNT_INFO(("\t[ %02d (0x%02X) ] IDR %04X\n", chipid, chipid, idr)); 
+	if(verbose) BNT_INFO(("\t[ %02d (0x%02X) ] IDR %04X\n", chipid, chipid, idr)); 
 	
 	return (idr == ((IDR_SIGNATURE << I_IDR_SIGNATURE) | chipid)) ? 
 		true : false;
@@ -495,13 +496,13 @@ bnt_detect(
 		if(spifd[board] < 0) break;
 
 		chip = 0;
-		if(!hello_there(spifd[board], chip)) 
+		if(!hello_there(spifd[board], chip, true)) 
 			break; //no chips on this board
 
 		chipcount[board] = 1;
 		for(int i=0; i<BITS_CHIPID; i++) {
 			chip = (MAX_NCHIPS_PER_BOARD - (1 << i)) & MAX_CHIPID;
-			if(hello_there(spifd[board], chip)) {
+			if(hello_there(spifd[board], chip, true)) {
 				chipcount[board] = MAX_NCHIPS_PER_BOARD >> i;
 				break;
 			}
@@ -518,7 +519,7 @@ bnt_detect(
 	shift = bnt_get_id_shift(*nchips);
 	for(board=0; board<*nboards; board++)  {
 		for(chip=0; chip<*nchips; chip++) {
-			if(hello_there(spifd[board], chip << shift)) {
+			if(hello_there(spifd[board], chip << shift, true)) {
 				printf("(Verification Okay) Hello from Board %d Chip %d(0x%06X)\n",
 						board, chip << shift, chip << shift);
 			}
@@ -552,7 +553,7 @@ bnt_devscan(
 
 		printf("\n[Board %d] : ", board);
 		for(chip=0; chip<MAX_NCHIPS_PER_BOARD; chip++) {
-			if(hello_there(spifd[board], chip)) {
+			if(hello_there(spifd[board], chip, true)) {
 //				putchar('O');
 				chipcount[board]++;
 			}

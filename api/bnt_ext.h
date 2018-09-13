@@ -30,7 +30,8 @@ printreg(const void *src, size_t count, int addr);
 
 extern bool 
 bnt_gethash(unsigned char* input, unsigned int length, unsigned char* out),
-bnt_getmidhash(unsigned char* input, unsigned char* out);
+bnt_getmidhash(unsigned char* input, unsigned char* out),
+hello_there(int fd, int chipid, bool verbose);
 
 extern void 
 bnt_hash2str(unsigned char* hash, char* out),
