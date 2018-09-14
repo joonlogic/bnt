@@ -148,7 +148,8 @@ bnt_write_all(
 		T_BntHandle* handle
 		)
 {
-	for(int i=0; i<handle->nboards; i++) {
+	for(int i=0; i<MAX_NBOARDS; i++) {
+		if(handle->spifd[i] <= 0) continue;
 		regwrite(
 				handle->spifd[i],
 				0,
@@ -204,7 +205,9 @@ hello_there(
 	regread(fd, chipid, IDR, &idr, SIZE_REG_DATA_BYTE, false);
 
 	idr = ntohs(idr);
-	if(verbose) BNT_INFO(("\t[ %02d (0x%02X) ] IDR %04X\n", chipid, chipid, idr)); 
+	if(verbose) {
+		if(idr) BNT_INFO(("\t[ %02d (0x%02X) ] IDR %04X\n", chipid, chipid, idr)); 
+	}
 	
 	return (idr == ((IDR_SIGNATURE << I_IDR_SIGNATURE) | chipid)) ? 
 		true : false;
@@ -240,6 +243,7 @@ bnt_pop_fifo(
 		bool broadcast,
 		T_BntHandle* handle
 		)
+//deprecated
 {
 	unsigned short ier = 0;
 	unsigned short set = 0;
@@ -451,7 +455,8 @@ bnt_getnonce(
 	int count = 0;
 	do {
 		//check works from Engines
-		for(int board=0; board<handle->nboards; board++) {
+		for(int board=0; board<MAX_NBOARDS; board++) {
+			if(handle->spifd[board] <= 0) continue;
 			for(int chip=0; chip<handle->nchips; chip++) {
 				bnt_read_mrr(
 						handle->spifd[board],
@@ -489,12 +494,14 @@ bnt_detect(
 	int spifd[MAX_NBOARDS]={0,};
 	int board, chip, shift;
 	int chipcount[MAX_NBOARDS] = {0,};
+	int _nboards = 0;
 
 	puts("BNT_DETECT : ");
 	for(board=0; board<MAX_NBOARDS; board++) {
 		spifd[board] = bnt_spi_open(0, board);
-		if(spifd[board] < 0) break;
+		if(spifd[board] < 0) continue;
 
+		_nboards++;
 		chip = 0;
 		if(!hello_there(spifd[board], chip, true)) 
 			break; //no chips on this board
@@ -509,7 +516,7 @@ bnt_detect(
 		}
 	}
 
-	*nboards = board;
+	*nboards = _nboards;
 	*nchips = chipcount[0];
 
 	printf("\n\t nBoards %d\n", *nboards);
@@ -517,7 +524,9 @@ bnt_detect(
 
 	//verify
 	shift = bnt_get_id_shift(*nchips);
-	for(board=0; board<*nboards; board++)  {
+	for(board=0; board<MAX_NBOARDS; board++)  {
+		if(spifd[board] < 0) break;
+
 		for(chip=0; chip<*nchips; chip++) {
 			if(hello_there(spifd[board], chip << shift, true)) {
 				printf("(Verification Okay) Hello from Board %d Chip %d(0x%06X)\n",
@@ -544,14 +553,23 @@ bnt_devscan(
 {
 	int spifd[MAX_NBOARDS]={0,};
 	int board, chip;
+	int _nboard = 0;
 	int chipcount[MAX_NBOARDS] = {0,};
 
 	puts("BNT DEVICE SCAN : ");
 	for(board=0; board<MAX_NBOARDS; board++) {
 		spifd[board] = bnt_spi_open(0, board);
-		if(spifd[board] < 0) break;
+		if(spifd[board] <= 0) break;
 
-		printf("\n[Board %d] : ", board);
+		printf("Board [%d] : ", board);
+		if(!hello_there(spifd[board], 0, false)) {
+			printf("No Chips installed.\n");
+			close(spifd[board]);
+			spifd[board] = -1;
+			continue;
+		}
+		else puts("");
+
 		for(chip=0; chip<MAX_NCHIPS_PER_BOARD; chip++) {
 			if(hello_there(spifd[board], chip, true)) {
 //				putchar('O');
@@ -564,18 +582,23 @@ bnt_devscan(
 //			if(chip % 8 == 7) putchar(' ');
 		}
 
-		printf("\nnChips %d\n", chipcount[board]);
+		_nboard++;
+
 		close(spifd[board]);
 	}
 
-	*nboards = board;
+	*nboards = _nboard;
 	*nchips = chipcount[0];
 
-	if(*nchips == 0) {
-		printf("No Devices scanned!\n");
-		return 0;
+	printf("\n===== SUMMARY =========\n");
+	for(int i=0; i<MAX_NBOARDS; i++) {
+		if(spifd[i] <= 0) continue;
+		printf("\tBoard[%d] : %d Chips installed\n", i, chipcount[i]);
 	}
 
+	puts("");
+
+	/*
 	for(board=*nboards; board>1; board--) {
 		printf("%s: board %d chip count %d\n", __func__, board-1, chipcount[board-1]);
 		if(chipcount[board-1] != chipcount[board-2]) {
@@ -584,6 +607,7 @@ bnt_devscan(
 			return -1;
 		}
 	}
+	*/
 
 	return 0;
 }

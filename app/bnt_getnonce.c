@@ -139,7 +139,8 @@ bnt_init(
 		)
 {
 	//reset
-	for(int i=0; i<handle->nboards; i++) {
+	for(int i=0; i<MAX_NBOARDS; i++) {
+		if(handle->spifd[i] <= 0) continue;
 		bnt_softreset(handle->spifd[i], 0, true);
 	}
 
@@ -173,11 +174,13 @@ bnt_init(
 #endif
 
 	//Verify and logging
-	for(int board=0; board<handle->nboards; board++) {
-		for(int chip=0; chip<handle->nchips; chip++) {
+	for(int board=0; board<MAX_NBOARDS; board++) {
+		if(handle->spifd[board] <= 0) continue;
+		int chipid_step = 1 << bnt_get_id_shift(handle->nchips);
+		for(int chip=0; chip<MAX_NCHIPS_PER_BOARD; chip+=chipid_step) {
 			regread(
 					handle->spifd[board], 
-					CHIPID_PHYSICAL(chip, handle), 
+					chip,
 					SSR,
 					&ssr,
 					sizeof(ssr),
@@ -186,7 +189,7 @@ bnt_init(
 
 			ssr = ntohs(ssr) & 0xFF00;
 			printf("%s:[%d][%02d] SSR %04X\n", 
-					__func__, board, CHIPID_PHYSICAL(chip, handle), ssr); 
+					__func__, board, chip, ssr); 
 			BNT_CHECK_TRUE(ssr==handle->ssr, -1);
 			ssr = 0; 
 		}
@@ -202,7 +205,8 @@ bnt_close(
 		)
 {
 	fclose(handle->bhfp);
-	for(int i=0; i<handle->nboards; i++) {
+	for(int i=0; i<MAX_NBOARDS; i++) {
+		if(handle->spifd[i] <= 0) continue;
 		close(handle->spifd[i]);
 	}
 
@@ -249,8 +253,13 @@ int main(int argc, char *argv[])
 	BNT_CHECK_NULL(handle.bhfp, -1);
 
 	//open SPI
-	for(int i=0; i<handle.nboards; i++) {
+	for(int i=0; i<MAX_NBOARDS; i++) {
 		handle.spifd[i] = bnt_spi_open(0, i);
+		if(!hello_there(handle.spifd[i], 0, false)) {
+			close(handle.spifd[i]);
+			handle.spifd[i] = -1;
+			continue;
+		}
 		BNT_CHECK_TRUE(handle.spifd[i] > 0, -1);
 	}
 
