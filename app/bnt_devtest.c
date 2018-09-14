@@ -35,7 +35,7 @@ typedef struct {
 
 static void print_usage(const char *prog)
 {
-	printf("Usage: %s [-bcnav] [-rw] <REG_ADDR> [REG_VAL(s)]\n", prog);
+	printf("Usage: %s [-bcnsav]\n", prog);
 	puts("  -b --boardid  board id(default 0). Range(0~3)\n"
 	     "  -c --chipid   spi chip id(default 0). Range(0~63)\n"
 	     "  -n --nchips   number of chips per board. (default 1)\n"
@@ -101,8 +101,14 @@ void regreadHVR(
 {
 	BNT_CHECK_NULL(rbuf,);
 
-	for(int i=0; i<SIZE_TOTAL_HVR_BYTE/SIZE_REG_DATA_BYTE; i++, rbuf+=SIZE_REG_DATA_BYTE) 
-		regread(fd, chipid, HVR0+i, rbuf, SIZE_REG_DATA_BYTE, false);
+	/*
+	for(int i=0; i<SIZE_TOTAL_HVR_BYTE/SIZE_REG_DATA_BYTE; i+=3, rbuf+=(SIZE_REG_DATA_BYTE*3)) {
+		regread(fd, chipid, HVR0+i, rbuf, SIZE_REG_DATA_BYTE*3, false);
+	}
+	*/
+	for(int i=0; i<SIZE_TOTAL_HVR_BYTE/SIZE_REG_DATA_BYTE; i++, rbuf+=(SIZE_REG_DATA_BYTE*1)) {
+		regread(fd, chipid, HVR0+i, rbuf, SIZE_REG_DATA_BYTE*1, false);
+	}
 } 
 
 bool do_memtest(
@@ -114,24 +120,29 @@ bool do_memtest(
 		)
 {
 	unsigned char buf[SIZE_TOTAL_HVR_BYTE+1] = {0,};
-	unsigned char rbuf[SIZE_TOTAL_HVR_BYTE+1] = {0,};
+	unsigned char rbuf[SIZE_TOTAL_HVR_BYTE+16] = {0,};
 	int cmp = 0;
+	int count = 0;
 
-	printf("[%d][%02d(0x%02X)] TEST PATTERN %02X%02X : ", csidx, chipid, chipid, pattern, pattern);
+	printf("\t[%d][%02d] TEST PATTERN %02X%02X : ", csidx, chipid, pattern, pattern);
 	memset(buf, pattern, SIZE_TOTAL_HVR_BYTE);
 	regwrite(fd, chipid, HVR0, buf, SIZE_TOTAL_HVR_BYTE, (int)bcast, false);
 
 	buf[0] = 0; //RO at HVR0
-	regreadHVR(fd, chipid, rbuf);
 
-	cmp = memcmp(buf, rbuf, SIZE_TOTAL_HVR_BYTE);
-	if(cmp) {
-		printf("FAILED! STOP. READ REGISTER ---- \n");
-		printreg(rbuf, SIZE_TOTAL_HVR_BYTE/SIZE_REG_DATA_BYTE, HVR0);
-	}
-	else {
-		printf("VERIFIED\n");
-	}
+	do {
+		regreadHVR(fd, chipid, rbuf);
+
+		cmp = memcmp(buf, rbuf, SIZE_TOTAL_HVR_BYTE);
+		if(cmp) {
+			printf("FAILED! READ REGISTER ---- RETRY %d\n", count);
+			printreg(rbuf, SIZE_TOTAL_HVR_BYTE/SIZE_REG_DATA_BYTE, HVR0);
+		}
+		else {
+			printf("VERIFIED\n");
+			break;
+		}
+	} while(count++<5);
 
 	return cmp ? false : true;
 }
@@ -159,7 +170,7 @@ int main(int argc, char *argv[])
 
 	chipid_start = 
 		info.isall ? 0 : 
-		info.isnchips ? info.nchips : info.chipid;
+		info.isnchips ? 0 : info.chipid;
 	chipid_end = 
 		info.isall ? MAX_CHIPID :
 		info.isnchips ? LAST_CHIPID(info.nchips) : info.chipid;
@@ -189,8 +200,10 @@ int main(int argc, char *argv[])
 		for(int chipid=chipid_start; chipid<=chipid_end; chipid += chipid_step) {
 			if(hello_there(fd, chipid, false) == false) continue;
 
+			bnt_softreset(fd, chipid, false);
+
 			//1. For each mode
-			printf("(1) WRITE & READ for each -------------------\n");
+			printf("[[%d][%02d]] (1) Write & Read (for each) ---------------------\n", csidx, chipid);
 			for(int i=0; i<sizeof(pattern); i++) {
 				result = do_memtest(fd, csidx, chipid, pattern[i], false); 
 				if(!result) break;
@@ -198,12 +211,14 @@ int main(int argc, char *argv[])
 			if(!result) continue;
 
 			//2. Broadcast write mode
-			printf("(2) Broadcast WRITE & READ -------------------\n");
+			printf("[[%d][%02d]] (2) Write & Read (Broadcast) -------------------\n", csidx, chipid);
 			for(int i=0; i<sizeof(pattern); i++) {
 				result = do_memtest(fd, csidx, chipid, pattern[i], true); 
 				if(!result) break;
 			}
 			if(!result) continue;
+
+			printf("\n");
 		}
 
 		close(fd);
