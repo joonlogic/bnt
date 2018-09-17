@@ -16,13 +16,13 @@
 			spidev@0{
 				compatible = "spidev";
 				reg = <0>;	/* CE0 */
-				spi-max-frequency = <1000000>;
+				spi-max-frequency = <100000>;
 			};
 
 			spidev@1{
 				compatible = "spidev";
 				reg = <1>;	/* CE1 */
-				spi-max-frequency = <1000000>;
+				spi-max-frequency = <100000>;
 			};
 
 			spidev@2{
@@ -30,7 +30,7 @@
 				reg = <2>;	/* CE2 */
 				#address-cells = <1>;
 				#size-cells = <0>;
-				spi-max-frequency = <1000000>;
+				spi-max-frequency = <100000>;
 			};
 
 			spidev@3{
@@ -38,7 +38,7 @@
 				reg = <3>;	/* CE3 */
 				#address-cells = <1>;
 				#size-cells = <0>;
-				spi-max-frequency = <1000000>;
+				spi-max-frequency = <100000>;
 			};
 		};
 	};

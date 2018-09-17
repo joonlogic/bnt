@@ -273,6 +273,47 @@ bnt_pop_fifo(
 	return 0;
 }
 
+int
+bnt_set_interrupt(
+		int fd,
+		int chipid,
+		EnumInterruptKind ikind,
+		bool enable,
+		bool broadcast,
+		T_BntHandle* handle
+		)
+{
+	//fd < 0, broadcast true --> all system
+	//fd > 0, broadcast true --> all chips on the fd
+	//if broadcast is false then fd should be > 0
+
+	unsigned short ier;
+
+	if(fd > 0) {
+		regread(fd, 0, IER, &ier, sizeof(ier), false);
+		ier = ntohs(ier);
+		ier = htons(enable ? ier | ikind : ier & (~ikind));
+
+		regwrite(fd, chipid, IER, &ier, sizeof(ier), broadcast, false);
+	}
+	else {
+		for(int i=0; i<MAX_NBOARDS; i++) {
+			if(handle->spifd[i] <= 0) continue;
+
+			fd = handle->spifd[i];
+
+			regread(fd, 0, IER, &ier, sizeof(ier), false);
+			ier = ntohs(ier);
+			ier = htons(enable ? ier | ikind : ier & (~ikind));
+
+			regwrite(fd, chipid, IER, &ier, sizeof(ier), broadcast, false);
+		}
+	}
+
+	return 0;
+}
+
+
 unsigned char 
 bnt_get_nonce_mask(
 		int nboards,
@@ -354,6 +395,19 @@ bnt_get_midstate(
 };
 
 int
+bnt_read_workid(
+		int fd,
+		int chipid,
+		unsigned char* workid
+		)
+{
+	unsigned short mrr0;
+	regread(fd, chipid, MRR0, &mrr0, sizeof(mrr0), false);
+	*workid = (unsigned char)ntohs(mrr0);
+	return 0;
+}
+
+int 
 bnt_read_mrr(
 		int fd,
 		int chipid,
@@ -369,7 +423,9 @@ bool
 bnt_test_validnonce(
 		T_BntHash* bhash,
 		T_BntHashMRR* mrr,
-		T_BntHandle* handle
+		T_BntHandle* handle,
+		int board,
+		int chip
 		)
 {
 	//check work id
@@ -384,8 +440,8 @@ bnt_test_validnonce(
 	realnonce = bnt_get_realnonce(mrr->nonceout, handle->mask);
 
 	if(ntohl(bhash->bh.nonce) != realnonce) {
-		BNT_INFO(("%s: mismatch. bhash->bh.nonce %08X vs mrr %08X ( realnonce %08X )\n",
-				__func__, ntohl(bhash->bh.nonce), mrr->nonceout, realnonce));
+		BNT_INFO(("[%d][%02d] mismatch. bhash->bh.nonce %08X vs mrr %08X => %08X )\n",
+				board, chip, ntohl(bhash->bh.nonce), mrr->nonceout, realnonce));
 		return false;
 	}
 
@@ -447,28 +503,35 @@ bnt_getnonce(
 {
 	//1. Write midstate & block header info to registers 
 	bnt_request_hash(bhash, handle); 
-	sleep(1);
+	usleep(100);
 
 	//2. Wait & Get results
 	T_BntHashMRR mrr={0,};
 	bool isvalid;
 	int count = 0;
+	int idstep = 1 << bnt_get_id_shift(handle->nchips);
 	do {
 		//check works from Engines
 		for(int board=0; board<MAX_NBOARDS; board++) {
 			if(handle->spifd[board] <= 0) continue;
-			for(int chip=0; chip<handle->nchips; chip++) {
+			for(int chip=0; chip<MAX_NCHIPS_PER_BOARD; chip+=idstep) {
+				bnt_read_workid(
+						handle->spifd[board],
+						chip,
+						&mrr.workid
+						);
+
+				if(mrr.workid != bhash->workid) {
+					continue; //means NO results
+				}
+
 				bnt_read_mrr(
 						handle->spifd[board],
-						CHIPID_PHYSICAL(chip, handle),
+						chip,
 						&mrr
 						);
-				if(mrr.workid != bhash->workid) continue; //means NO results
 
-				//TODO: temporary
-//				bnt_pop_fifo(handle->spifd[board], CHIPID_PHYSICAL(chip, handle), false, handle);
-
-				isvalid = bnt_test_validnonce(bhash, &mrr, handle);
+				isvalid = bnt_test_validnonce(bhash, &mrr, handle, board, chip);
 				if(isvalid) {
 					//found it
 					bnt_printout_validnonce(board, chip, bhash);
@@ -478,71 +541,11 @@ bnt_getnonce(
 			}
 		}
 		sleep(1);
-		if(count%20 == 0) printf("%s: count %d\n", __func__, count);
+		if(count%20 == 0) printf("waiting count %d\n", count);
 	} while(count++ < THRESHOLD_GET_NONCE_COUNT);
 
-	printf("%s: Timedout. count %d\n", __func__, count);
+	printf("Timedout. count %d\n", count);
 	return -1;
-}
-
-int
-bnt_detect(
-		int* nboards,
-		int* nchips
-		)
-{
-	int spifd[MAX_NBOARDS]={0,};
-	int board, chip, shift;
-	int chipcount[MAX_NBOARDS] = {0,};
-	int _nboards = 0;
-
-	puts("BNT_DETECT : ");
-	for(board=0; board<MAX_NBOARDS; board++) {
-		spifd[board] = bnt_spi_open(0, board);
-		if(spifd[board] < 0) continue;
-
-		_nboards++;
-		chip = 0;
-		if(!hello_there(spifd[board], chip, true)) 
-			break; //no chips on this board
-
-		chipcount[board] = 1;
-		for(int i=0; i<BITS_CHIPID; i++) {
-			chip = (MAX_NCHIPS_PER_BOARD - (1 << i)) & MAX_CHIPID;
-			if(hello_there(spifd[board], chip, true)) {
-				chipcount[board] = MAX_NCHIPS_PER_BOARD >> i;
-				break;
-			}
-		}
-	}
-
-	*nboards = _nboards;
-	*nchips = chipcount[0];
-
-	printf("\n\t nBoards %d\n", *nboards);
-	printf("\n\t nChips %d\n", *nchips);
-
-	//verify
-	shift = bnt_get_id_shift(*nchips);
-	for(board=0; board<MAX_NBOARDS; board++)  {
-		if(spifd[board] < 0) break;
-
-		for(chip=0; chip<*nchips; chip++) {
-			if(hello_there(spifd[board], chip << shift, true)) {
-				printf("(Verification Okay) Hello from Board %d Chip %d(0x%06X)\n",
-						board, chip << shift, chip << shift);
-			}
-			else {
-				printf("(Verification Error) ** NO Response from Board %d Chip %d(0x%06X)\n",
-						board, chip << shift, chip << shift);
-			}
-		}
-		close(spifd[board]);
-	}
-
-	printf("Verification Done\n");
-
-	return 0;
 }
 
 int 

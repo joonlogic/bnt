@@ -195,6 +195,9 @@ bnt_init(
 		}
 	}
 
+	//Interrupt enable
+	bnt_set_interrupt(-1, 0, IntAll, true, true, handle);
+
 	return 0;
 }
 
@@ -235,7 +238,7 @@ int main(int argc, char *argv[])
 	BNT_CHECK_RESULT(ret, ret);
 
 	if(info.autodetect) {
-		ret = bnt_detect(&info.nboards, &info.nchips);
+		ret = bnt_devscan(&info.nboards, &info.nchips);
 		BNT_CHECK_RESULT(ret, ret);
 	}
 

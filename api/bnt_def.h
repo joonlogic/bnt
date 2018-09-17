@@ -278,4 +278,13 @@ typedef struct {
 	unsigned int    nonceout;
 } T_BntHashMRR;
 
+typedef enum {
+	IntOverHeat = 1,
+	IntMined = 2,
+	IntResultFifoAlmostFull = 4,
+	IntBHVFifoFull = 8,
+	IntAll = 1|2|4|8 
+} EnumInterruptKind;
+
+
 #endif //BNT_DEF_H
