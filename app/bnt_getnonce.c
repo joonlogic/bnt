@@ -263,7 +263,7 @@ int main(int argc, char *argv[])
 			handle.spifd[i] = -1;
 			continue;
 		}
-		BNT_CHECK_TRUE(handle.spifd[i] > 0, -1);
+		printf("Open Board %d\n", i);
 	}
 
 	//process one by one
