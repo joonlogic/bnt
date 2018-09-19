@@ -186,11 +186,26 @@ bnt_init(
 					sizeof(ssr),
 					false
 				   );
-
 			ssr = ntohs(ssr) & 0xFF00;
-			printf("%s:[%d][%02d] SSR %04X\n", 
-					__func__, board, chip, ssr); 
-			BNT_CHECK_TRUE(ssr==handle->ssr, -1);
+
+			if(ssr != handle->ssr) {
+				int retry = 0;
+				do {
+					regread(
+							handle->spifd[board], 
+							chip,
+							SSR,
+							&ssr,
+							sizeof(ssr),
+							false
+						   );
+					ssr = ntohs(ssr) & 0xFF00;
+				} while((ssr != handle->ssr) && (retry++ < 5));
+
+				printf("Retried:[%d][%02d] SSR %04X\n", board, chip, ssr); 
+			}
+
+//			BNT_CHECK_TRUE(ssr==handle->ssr, -1);
 			ssr = 0; 
 		}
 	}
