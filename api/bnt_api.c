@@ -440,7 +440,7 @@ bnt_test_validnonce(
 	realnonce = bnt_get_realnonce(mrr->nonceout, handle->mask);
 
 	if(ntohl(bhash->bh.nonce) != realnonce) {
-		BNT_INFO(("[%d][%02d] mismatch. bhash->bh.nonce %08X vs mrr %08X => %08X )\n",
+		BNT_INFO(("[%d][%02d] Met! bhash->bh.nonce %08X vs mrr %08X => %08X )\n",
 				board, chip, ntohl(bhash->bh.nonce), mrr->nonceout, realnonce));
 		return false;
 	}
