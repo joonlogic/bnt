@@ -21,6 +21,7 @@
 #include <bnt_def.h>
 #include <bnt_ext.h>
 #ifdef DEMO
+#include "bnt_demoext.h"
 #include "ConsFunc.h"
 #endif
 
@@ -244,6 +245,20 @@ int main(int argc, char *argv[])
 		.autodetect = true
 	};
 
+#ifdef DEMO
+	char strstatus[32] = {0,};
+	char strtime[32] = {0,};
+	char strtarget[65] = {0,};
+	T_BNT_WEBHANDLE notihandle = {
+		.status = strstatus,
+		.time = strtime,
+		.target = strtarget,
+	};
+
+	bnt_open_noti_web(&notihandle);
+	bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);
+#endif
+
 	if(argc == 1) print_usage(argv[0]);
 
 	ret = parse_opts(argc, argv, &info);
@@ -278,21 +293,21 @@ int main(int argc, char *argv[])
 		printf("Open Board %d\n", i);
 	}
 
-#ifdef DEMO
-	//Ready
-	ConsoleInitialize();
-	Cons_clear();
-	Cons_printf(
-		"\n\n"
-        "\t\t        BNT Test Application for hashing \n"
-        "\t\t                Sep 2018\n\n"
-        );
-#endif
 	//process one by one
 	do {
 		readlen = fread((void*)&bhash.bh, sizeof(bhash.bh), 1, handle.bhfp);
 		if(readlen <= 0) break;
 
+#ifdef DEMO
+		//Ready
+		ConsoleInitialize();
+		Cons_clear();
+		Cons_printf(
+			"\n\n"
+			"\t\t        BNT Test Application for hashing \n"
+			"\t\t                Sep 2018\n\n"
+			);
+#endif
 		//initialize
 		ntime = time(NULL);
 		start_time = ntime;
@@ -304,18 +319,32 @@ int main(int argc, char *argv[])
 		ret = bnt_get_midstate(&bhash);
 		BNT_CHECK_RESULT(ret, -1);
 		
+		bhash.workid++ == 0xFF ? bhash.workid++ : bhash.workid;
+
+#ifdef DEMO
+		bnt_get_targetstr(bhash.bh.bits, notihandle.target);
+		bnt_set_status_noti_web(&notihandle, "mining", bhash.workid, ctime(&ntime), 0);
+#endif
 		printout_bh(&bhash.bh);
 		printout_hash(bhash.midstate);
 
-		bhash.workid++ == 0xFF ? bhash.workid++ : bhash.workid;
 		ret = bnt_getnonce(&bhash, &handle);
 
 		ntime = time(NULL);
-		BNT_PRINT(("[%d] Workid %d Passed ( %ld sec consumed ) : DATE %s. \n\n", 
+		BNT_PRINT(("[%d] Workid %d Passed ( %ld sec consumed ) : DATE %s \n\n", 
 				count++, bhash.workid, ntime - start_time, ctime(&ntime)));
+
+#ifdef DEMO
+		bnt_set_status_noti_web(&notihandle, "mined", bhash.workid, ctime(&ntime), 0);
+		sleep(3);
+#endif
 
 	} while(1);
 
+#ifdef DEMO
+	fclose(notihandle.fp);
+	notihandle.fp = NULL;
+#endif
 	bnt_close(&handle);
 
 	return ret;

@@ -28,7 +28,7 @@ BNT_LIB = $(BNT_LIBDIR)/libbnt.a
 BNT_INC = -I../api 
 
 CFLAGS += -DLINUX -Wall
-LFLAGS += -lcrypto
+LFLAGS += -lcrypto -lm
 CFLAGS += -DFPGA
 
 all: $(TARGET)

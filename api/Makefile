@@ -21,8 +21,6 @@ all: $(TARGETS)
 
 %.o: %.c ${INCLUDES}
 	$(CC) -c $(CFLAGS) $< -o $@
-$(BNT_LIB): $(BNT_OBJ)
-	$(AR) rcs $(BNT_LIB) $(LFLAGS) $(BNT_OBJ)
 
 %.demo.o: %.c ${INCLUDES}
 	$(CC) -c $(CFLAGS) -DDEMO $< -o $@

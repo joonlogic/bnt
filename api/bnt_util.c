@@ -16,6 +16,7 @@
 #include <arpa/inet.h>
 #include <openssl/sha.h>
 #include <time.h>
+#include <math.h>
 
 void 
 hexdump(
@@ -145,3 +146,20 @@ void bnt_hex2str(
     }
 }
 
+void bnt_get_targetstr(
+		unsigned int bits,
+		char* str
+		)
+{
+	double exp = (double)(8. * ((bits >> 24) - 3));
+	double target = ((double)(bits & 0x00FFFFFF)) * pow(2., exp);
+
+/*	printf("bits = %08X\n", bits);
+	printf("0. exp = %lf\n", exp);
+	printf("0. bits & 0x00FFFFFF  = %08X\n", bits & 0x00FFFFFF );
+	printf("1.target = %lf\n", target);
+	printf("2.target = %064llX\n", target);
+	printf("3.target = %s\n", str);
+*/
+	sprintf(str,"%064llX", target);
+}

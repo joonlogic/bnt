@@ -43,7 +43,8 @@ printout_hash(unsigned char* hash);
 
 
 extern void
-bnt_write_all(int regaddr, void* buf, int wrbytes, T_BntHandle* handle);
+bnt_write_all(int regaddr, void* buf, int wrbytes, T_BntHandle* handle),
+bnt_get_targetstr(unsigned int bits, char* str);
 
 
 extern unsigned char bnt_get_nonce_mask(int nboards, int nchips);

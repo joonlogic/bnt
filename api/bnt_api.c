@@ -16,8 +16,11 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
-#include <bnt_def.h>
-#include <bnt_ext.h>
+#ifdef DEMO
+#include "../app/demo/ConsFunc.h"
+#endif
+#include "bnt_def.h"
+#include "bnt_ext.h"
 
 int
 regwrite(
@@ -471,7 +474,7 @@ bnt_test_validnonce(
 	realnonce = bnt_get_realnonce(mrr->nonceout, handle->mask);
 
 	if(ntohl(bhash->bh.nonce) != realnonce) {
-		BNT_INFO(("[%d][%02d] Met! bhash->bh.nonce %08X vs mrr %08X => %08X )\n",
+		BNT_INFO(("\n[%d][%02d] Met! bhash->bh.nonce %08X vs mrr %08X => %08X )\n",
 				board, chip, ntohl(bhash->bh.nonce), mrr->nonceout, realnonce));
 		return false;
 	}
@@ -486,7 +489,7 @@ bnt_printout_validnonce(
 		T_BntHash* bhash
 		)
 {
-	BNT_PRINT(("((FOUND)) [%d][%02d] nonce %08X\n",
+	BNT_PRINT(("\n\n[%d][%02d] ((FOUND!!)) nonce %08X\n\n",
 			board, chip, htonl(bhash->bh.nonce)));
 }
 
@@ -506,18 +509,28 @@ void printout_bh(
     BNT_PRINT(("Merkle Root : %s\n", outstr));
 
     BNT_PRINT(("Time Stamp  : (%08x) %s", ntohl(bh->ntime), ctime(&ntime)));
-    BNT_PRINT(("Target      : %08x\n", ntohl(bh->bits)));
+    BNT_PRINT(("Bits        : %08x\n", bh->bits));
+
+#ifdef DEMO
+	bnt_get_targetstr(bh->bits, outstr);
+    BNT_PRINT(("Target      : %s\n", outstr));
+    BNT_PRINT(("Nonce       : 00000000\n"));
+#else
+    BNT_PRINT(("Target      : %08x\n", bh->bits));
     BNT_PRINT(("Nonce       : %08X\n", ntohl(bh->nonce)));
+#endif
 }
 
 void printout_hash(
         unsigned char* hash
         )
 {
+#ifndef DEMO
     char outstr[65] = {0,};
 
     bnt_hash2str(hash, outstr);
     BNT_PRINT(("Hash String : %s\n", outstr));
+#endif
 }
 
 
@@ -572,8 +585,8 @@ bnt_getnonce(
 			}
 		}
 		sleep(1);
-#ifdef DEMO
-		if(count%5 == 0) BNT_PRINT(("-|-"));
+#if 1 //def DEMO
+		if(count%2 == 0) { BNT_PRINT((".")); fflush(stdout); }
 #else
 		if(count%20 == 0) BNT_PRINT(("waiting count %d\n", count));
 #endif

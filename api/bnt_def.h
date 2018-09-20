@@ -13,14 +13,15 @@
 #define BNT_DEF_H
 
 #define BNT_TRACE(args)     printf args
-#define BNT_INFO(args)      printf args
 #define BNT_ERROR(args)     printf args
 #define BNT_MSG(args)       printf args
 #define BNT_DEV(args)       printf args
 
 #ifdef DEMO
+#define BNT_INFO(args)      Cons_printf args
 #define BNT_PRINT(args)     Cons_printf args
 #else
+#define BNT_INFO(args)      printf args
 #define BNT_PRINT(args)     printf args
 #endif
 
