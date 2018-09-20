@@ -135,7 +135,7 @@ bool do_memtest(
 
 		cmp = memcmp(buf, rbuf, SIZE_TOTAL_HVR_BYTE);
 		if(cmp) {
-			printf("FAILED! READ REGISTER ---- RETRY %d\n", count);
+			printf("FAILED!\nREAD REGISTER ---- RETRY %d\n", count);
 			printreg(rbuf, SIZE_TOTAL_HVR_BYTE/SIZE_REG_DATA_BYTE, HVR0);
 		}
 		else {

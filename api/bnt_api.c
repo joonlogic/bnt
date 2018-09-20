@@ -349,12 +349,12 @@ bnt_get_nonce_mask(
 	return BNT_CONF_MASK[nboards-1][nchips-1];
 }
 
-unsigned char 
+unsigned short 
 bnt_get_nchips(
 		unsigned char mask
 		)
 {
-	static const unsigned char BNT_TOTAL_CHIPS_FROM_MASK[256] = {
+	static const unsigned short BNT_TOTAL_CHIPS_FROM_MASK[256] = {
 		[0] = 1,
 		[0x20] = 2,
 		[0x30] = 4,

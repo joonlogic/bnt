@@ -149,7 +149,7 @@ bnt_init(
 
 	//set Mask
 	handle->mask = bnt_get_nonce_mask(handle->nboards, handle->nchips);
-	BNT_INFO(("%s: mask %02X\n", __func__, handle->mask));
+	BNT_INFO(("MASK %02X\n", handle->mask));
 	handle->idshift = bnt_get_id_shift(handle->nchips);
 	handle->ssr = ((unsigned short)handle->mask) << I_SSR_MASK;
 
@@ -192,7 +192,7 @@ bnt_init(
 				int retry = 0;
 				do {
 					ssr = htons(handle->ssr);
-					regwrite(handle->spifd[i], 0, SSR, &ssr, sizeof(ssr), (int)true, false);
+					regwrite(handle->spifd[board], 0, SSR, &ssr, sizeof(ssr), (int)true, false);
 					regread(handle->spifd[board], chip, SSR, &ssr, sizeof(ssr), false);
 					ssr = ntohs(ssr) & 0xFF00;
 				} while((ssr != handle->ssr) && (retry++ < 5));
@@ -298,8 +298,8 @@ int main(int argc, char *argv[])
 		ret = bnt_getnonce(&bhash, &handle);
 
 		ntime = time(NULL);
-		printf("[%d] Workid %d Passed with %s. ( %ld sec consumed ) : TIME %s. \n\n", 
-				count++, bhash.workid, ret == 0 ? "SUCCESS" : "FAIL", ntime - start_time, ctime(&ntime));
+		printf("[%d] Workid %d Passed ( %ld sec consumed ) : DATE %s. \n\n", 
+				count++, bhash.workid, ntime - start_time, ctime(&ntime));
 
 	} while(1);
 
