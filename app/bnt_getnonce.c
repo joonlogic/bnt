@@ -20,6 +20,9 @@
 #include <arpa/inet.h>
 #include <bnt_def.h>
 #include <bnt_ext.h>
+#ifdef DEMO
+#include "ConsFunc.h"
+#endif
 
 #define MAX_FILENAME_STR            128
 typedef struct {
@@ -197,7 +200,7 @@ bnt_init(
 					ssr = ntohs(ssr) & 0xFF00;
 				} while((ssr != handle->ssr) && (retry++ < 5));
 
-				printf("Retried:[%d][%02d] SSR %04X\n", board, chip, ssr); 
+				BNT_PRINT(("Retried:[%d][%02d] SSR %04X\n", board, chip, ssr)); 
 			}
 //			BNT_CHECK_TRUE(ssr==handle->ssr, -1);
 			ssr = 0; 
@@ -275,6 +278,16 @@ int main(int argc, char *argv[])
 		printf("Open Board %d\n", i);
 	}
 
+#ifdef DEMO
+	//Ready
+	ConsoleInitialize();
+	Cons_clear();
+	Cons_printf(
+		"\n\n"
+        "\t\t        BNT Test Application for hashing \n"
+        "\t\t                Sep 2018\n\n"
+        );
+#endif
 	//process one by one
 	do {
 		readlen = fread((void*)&bhash.bh, sizeof(bhash.bh), 1, handle.bhfp);
@@ -283,7 +296,7 @@ int main(int argc, char *argv[])
 		//initialize
 		ntime = time(NULL);
 		start_time = ntime;
-		printf("[[ %d ]] START %s -----------------------------------------\n", count, ctime(&ntime));
+		BNT_PRINT(("[[ %d ]] START %s -----------------------------------------\n", count, ctime(&ntime)));
 
 		ret = bnt_init(&handle, &info);
 		BNT_CHECK_RESULT(ret, ret);
@@ -298,8 +311,8 @@ int main(int argc, char *argv[])
 		ret = bnt_getnonce(&bhash, &handle);
 
 		ntime = time(NULL);
-		printf("[%d] Workid %d Passed ( %ld sec consumed ) : DATE %s. \n\n", 
-				count++, bhash.workid, ntime - start_time, ctime(&ntime));
+		BNT_PRINT(("[%d] Workid %d Passed ( %ld sec consumed ) : DATE %s. \n\n", 
+				count++, bhash.workid, ntime - start_time, ctime(&ntime)));
 
 	} while(1);
 

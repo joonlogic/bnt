@@ -486,8 +486,8 @@ bnt_printout_validnonce(
 		T_BntHash* bhash
 		)
 {
-	printf("((FOUND)) [%d][%02d] nonce %08x\n",
-			board, chip, htonl(bhash->bh.nonce));
+	BNT_PRINT(("((FOUND)) [%d][%02d] nonce %08X\n",
+			board, chip, htonl(bhash->bh.nonce)));
 }
 
 void printout_bh(
@@ -497,17 +497,17 @@ void printout_bh(
     char outstr[65] = {0,};
     time_t ntime = bh->ntime;
 
-    printf("Version     : %08x\n", ntohl(bh->version));
+    BNT_PRINT(("Version     : %08x\n", ntohl(bh->version)));
 
     bnt_hash2str(bh->prevhash, outstr);
-    printf("Prev Hash   : %s\n", outstr);
+    BNT_PRINT(("Prev Hash   : %s\n", outstr));
 
     bnt_hash2str(bh->merkle, outstr);
-    printf("Merkle Root : %s\n", outstr);
+    BNT_PRINT(("Merkle Root : %s\n", outstr));
 
-    printf("Time Stamp  : (%08x) %s", ntohl(bh->ntime), ctime(&ntime));
-    printf("Target      : %08x\n", ntohl(bh->bits));
-    printf("Nonce       : %08x\n", ntohl(bh->nonce));
+    BNT_PRINT(("Time Stamp  : (%08x) %s", ntohl(bh->ntime), ctime(&ntime)));
+    BNT_PRINT(("Target      : %08x\n", ntohl(bh->bits)));
+    BNT_PRINT(("Nonce       : %08X\n", ntohl(bh->nonce)));
 }
 
 void printout_hash(
@@ -517,7 +517,7 @@ void printout_hash(
     char outstr[65] = {0,};
 
     bnt_hash2str(hash, outstr);
-    printf("Hash String : %s\n", outstr);
+    BNT_PRINT(("Hash String : %s\n", outstr));
 }
 
 
@@ -572,10 +572,14 @@ bnt_getnonce(
 			}
 		}
 		sleep(1);
-		if(count%20 == 0) printf("waiting count %d\n", count);
+#ifdef DEMO
+		if(count%5 == 0) BNT_PRINT(("-|-"));
+#else
+		if(count%20 == 0) BNT_PRINT(("waiting count %d\n", count));
+#endif
 	} while(count++ < (THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1)));
 
-	printf("Timedout. count %d\n", count);
+	BNT_PRINT(("Timedout. Waiting Count %d\n", count));
 	return -1;
 }
 
@@ -595,9 +599,9 @@ bnt_devscan(
 		spifd[board] = bnt_spi_open(0, board);
 		if(spifd[board] <= 0) break;
 
-		printf("Board [%d] : ", board);
+		BNT_PRINT(("Board [%d] : ", board));
 		if(!hello_there(spifd[board], 0, false)) {
-			printf("No Chips installed.\n");
+			BNT_PRINT(("No Chips installed.\n"));
 			close(spifd[board]);
 			spifd[board] = -1;
 			continue;
@@ -624,10 +628,10 @@ bnt_devscan(
 	*nboards = _nboard;
 	*nchips = chipcount[0];
 
-	printf("\n===== SUMMARY =========\n");
+	BNT_PRINT(("\n===== SUMMARY =========\n"));
 	for(int i=0; i<MAX_NBOARDS; i++) {
 		if(spifd[i] <= 0) continue;
-		printf("\tBoard[%d] : %d Chips installed\n", i, chipcount[i]);
+		BNT_PRINT(("\tBoard[%d] : %d Chips installed\n", i, chipcount[i]));
 	}
 
 	puts("");
