@@ -191,20 +191,14 @@ bnt_init(
 			if(ssr != handle->ssr) {
 				int retry = 0;
 				do {
-					regread(
-							handle->spifd[board], 
-							chip,
-							SSR,
-							&ssr,
-							sizeof(ssr),
-							false
-						   );
+					ssr = htons(handle->ssr);
+					regwrite(handle->spifd[i], 0, SSR, &ssr, sizeof(ssr), (int)true, false);
+					regread(handle->spifd[board], chip, SSR, &ssr, sizeof(ssr), false);
 					ssr = ntohs(ssr) & 0xFF00;
 				} while((ssr != handle->ssr) && (retry++ < 5));
 
 				printf("Retried:[%d][%02d] SSR %04X\n", board, chip, ssr); 
 			}
-
 //			BNT_CHECK_TRUE(ssr==handle->ssr, -1);
 			ssr = 0; 
 		}
@@ -290,6 +284,7 @@ int main(int argc, char *argv[])
 		ntime = time(NULL);
 		start_time = ntime;
 		printf("[[ %d ]] START %s -----------------------------------------\n", count, ctime(&ntime));
+
 		ret = bnt_init(&handle, &info);
 		BNT_CHECK_RESULT(ret, ret);
 

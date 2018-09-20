@@ -313,7 +313,6 @@ bnt_set_interrupt(
 	return 0;
 }
 
-
 unsigned char 
 bnt_get_nonce_mask(
 		int nboards,
@@ -348,6 +347,38 @@ bnt_get_nonce_mask(
 	BNT_CHECK_TRUE(nchips <= MAX_NCHIPS_PER_BOARD, 0);
 
 	return BNT_CONF_MASK[nboards-1][nchips-1];
+}
+
+unsigned char 
+bnt_get_nchips(
+		unsigned char mask
+		)
+{
+	static const unsigned char BNT_TOTAL_CHIPS_FROM_MASK[256] = {
+		[0] = 1,
+		[0x20] = 2,
+		[0x30] = 4,
+		[0x38] = 8,
+		[0x3C] = 16,
+		[0x3E] = 32,
+		[0x3F] = 64,
+		[0x40] = 2,
+		[0x60] = 4,
+		[0x70] = 8,
+		[0x78] = 16,
+		[0x7C] = 32,
+		[0x7E] = 64,
+		[0x7F] = 128,
+		[0xC0] = 4,
+		[0xE0] = 8,
+		[0xF0] = 16,
+		[0xF8] = 32,
+		[0xFC] = 64,
+		[0xFE] = 128,
+		[0xFF] = 256,
+	};
+
+	return BNT_TOTAL_CHIPS_FROM_MASK[mask];
 }
 
 //get chipid shift according to nChips
@@ -542,7 +573,7 @@ bnt_getnonce(
 		}
 		sleep(1);
 		if(count%20 == 0) printf("waiting count %d\n", count);
-	} while(count++ < THRESHOLD_GET_NONCE_COUNT);
+	} while(count++ < (THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1)));
 
 	printf("Timedout. count %d\n", count);
 	return -1;

@@ -205,7 +205,7 @@ typedef enum {
 #define SIZE_BNT_HASH_TUPLE_CORE            44 // Byte = midstate + ...
 #define COUNT_BNT_HASH_TUPLE                23 // Short
 
-#define THRESHOLD_GET_NONCE_COUNT           1000
+#define THRESHOLD_GET_NONCE_COUNT           700 // 
 
 typedef struct bnt_spi_header {
 	unsigned char  cmdid;
