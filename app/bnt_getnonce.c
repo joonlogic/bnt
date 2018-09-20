@@ -321,6 +321,7 @@ int main(int argc, char *argv[])
 		bhash.workid++ == 0xFF ? bhash.workid++ : bhash.workid;
 
 #ifdef DEMO
+		memset(notihandle.target, 0x00, 65);
 		bnt_get_targetstr(bhash.bh.bits, notihandle.target);
 		bnt_set_status_noti_web(&notihandle, "mining", bhash.workid, ctime(&ntime), 0);
 #endif
