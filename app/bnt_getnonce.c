@@ -255,7 +255,6 @@ int main(int argc, char *argv[])
 		.target = strtarget,
 	};
 
-	bnt_open_noti_web(&notihandle);
 	bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);
 #endif
 
@@ -335,16 +334,12 @@ int main(int argc, char *argv[])
 				count++, bhash.workid, ntime - start_time, ctime(&ntime)));
 
 #ifdef DEMO
-		bnt_set_status_noti_web(&notihandle, "mined", bhash.workid, ctime(&ntime), 0);
+		bnt_set_status_noti_web(&notihandle, "mined", bhash.workid, ctime(&ntime), bhash.bh.nonce);
 		sleep(3);
 #endif
 
 	} while(1);
 
-#ifdef DEMO
-	fclose(notihandle.fp);
-	notihandle.fp = NULL;
-#endif
 	bnt_close(&handle);
 
 	return ret;

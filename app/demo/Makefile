@@ -11,8 +11,9 @@ LD_FLAGS += -lcrypto
 
 OBJS = ConsFunc.o 
 OBJS += bnt_getnonce.o
+OBJS += bnt_demoutil.o
 
-LIBS = ../../api/libbnt.a
+LIBS = ../../api/libbnt.demo.a
 
 TARGET = bnt_demo
 
@@ -23,7 +24,7 @@ all: $(TARGET)
 	$(CC) $(CC_FLAGS) -o $@ $<
 	@echo
 
-$(TARGET): $(OBJS)
+$(TARGET): $(OBJS) $(LIBS)
 	$(LD) $(LD_FLAGS) -o $@ $(OBJS) $(LIBS)
 
 clean:

@@ -146,20 +146,33 @@ void bnt_hex2str(
     }
 }
 
+static void
+bnt_fill_zeros(unsigned int nbytes, char* outstr)
+{
+	//outstr should be clean
+	for(int i=0; i<nbytes; i++) {
+		*outstr++ = '0';
+		*outstr++ = '0';
+	}
+}
+	
+static void
+bnt_pad_zeros(char* outstr)
+{
+	for(int i=strlen(outstr); i<64; i++) {
+	   outstr[i] = '0';
+	} 
+}	
+
 void bnt_get_targetstr(
 		unsigned int bits,
 		char* str
 		)
 {
-	double exp = (double)(8. * ((bits >> 24) - 3));
-	double target = ((double)(bits & 0x00FFFFFF)) * pow(2., exp);
+	unsigned int nzerobytes = ((bits >> 24) - 3);
+	unsigned int target_int = bits & 0x00FFFFFF;
 
-/*	printf("bits = %08X\n", bits);
-	printf("0. exp = %lf\n", exp);
-	printf("0. bits & 0x00FFFFFF  = %08X\n", bits & 0x00FFFFFF );
-	printf("1.target = %lf\n", target);
-	printf("2.target = %064llX\n", target);
-	printf("3.target = %s\n", str);
-*/
-	sprintf(str,"%064llX", target);
+	bnt_fill_zeros(32 - (6 + nzerobytes), str); //6 means strlen of target_int
+	sprintf(str + strlen(str), "%06X", target_int);
+	bnt_pad_zeros(str);
 }

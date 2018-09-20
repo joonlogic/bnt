@@ -474,8 +474,10 @@ bnt_test_validnonce(
 	realnonce = bnt_get_realnonce(mrr->nonceout, handle->mask);
 
 	if(ntohl(bhash->bh.nonce) != realnonce) {
+#ifndef DEMO
 		BNT_INFO(("\n[%d][%02d] Met! bhash->bh.nonce %08X vs mrr %08X => %08X )\n",
 				board, chip, ntohl(bhash->bh.nonce), mrr->nonceout, realnonce));
+#endif
 		return false;
 	}
 
@@ -511,12 +513,14 @@ void printout_bh(
     BNT_PRINT(("Time Stamp  : (%08x) %s", ntohl(bh->ntime), ctime(&ntime)));
     BNT_PRINT(("Bits        : %08x\n", bh->bits));
 
-#ifdef DEMO
+	memset(outstr, 0x00, sizeof(outstr));
 	bnt_get_targetstr(bh->bits, outstr);
     BNT_PRINT(("Target      : %s\n", outstr));
+
+#ifdef DEMO
     BNT_PRINT(("Nonce       : 00000000\n"));
+	BNT_PRINT(("\n\n"));
 #else
-    BNT_PRINT(("Target      : %08x\n", bh->bits));
     BNT_PRINT(("Nonce       : %08X\n", ntohl(bh->nonce)));
 #endif
 }
@@ -584,13 +588,16 @@ bnt_getnonce(
 				memset(&mrr, 0x00, sizeof(mrr));
 			}
 		}
-		sleep(1);
-#if 1 //def DEMO
-		if(count%2 == 0) { BNT_PRINT((".")); fflush(stdout); }
+#ifdef DEMO
+		usleep(100000); //100ms
+		BNT_PRINT(("IN PROGRESS : %06d\r", count)); 
+		fflush(stdout); 
+	} while(count++ < (10*THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1)));
 #else
+		sleep(1);
 		if(count%20 == 0) BNT_PRINT(("waiting count %d\n", count));
-#endif
 	} while(count++ < (THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1)));
+#endif
 
 	BNT_PRINT(("Timedout. Waiting Count %d\n", count));
 	return -1;
