@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 	ret = parse_opts(argc, argv, &info);
 	BNT_CHECK_RESULT(ret, ret);
 
-	if( info.isall ) {
+	if(info.isall) {
 		for(int i=0; i<sizeof(BNT_GPIO_IRQ)/sizeof(int); i++) {
 			fd[i] = bnt_config_gpio_irq(BNT_GPIO_IRQ[i], info.unexport);
 			printf("GPIO(%d) fd(%d)\n", BNT_GPIO_IRQ[i], fd[i]);

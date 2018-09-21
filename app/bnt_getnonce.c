@@ -158,6 +158,8 @@ bnt_init(
 #endif
 	handle->idshift = bnt_get_id_shift(handle->nchips);
 	handle->ssr = ((unsigned short)handle->mask) << I_SSR_MASK;
+	
+//	handle->ssr |= (1<<2); //64bit
 
 	unsigned short ssr = htons(handle->ssr);
 	bnt_write_all(
