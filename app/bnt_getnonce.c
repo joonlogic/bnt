@@ -153,7 +153,9 @@ bnt_init(
 
 	//set Mask
 	handle->mask = bnt_get_nonce_mask(handle->nboards, handle->nchips);
+#ifndef DEMO
 	BNT_INFO(("MASK %02X\n", handle->mask));
+#endif
 	handle->idshift = bnt_get_id_shift(handle->nchips);
 	handle->ssr = ((unsigned short)handle->mask) << I_SSR_MASK;
 
@@ -315,11 +317,17 @@ int main(int argc, char *argv[])
 			"\t\t        BNT Test Application for mining \n"
 			"\t\t                Sep 2018\n\n"
 			);
+
 #endif
 		//initialize
 		ntime = time(NULL);
 		start_time = ntime;
-		BNT_PRINT(("[[ %d ]] START %s -----------------------------------------\n", count, ctime(&ntime)));
+//		BNT_PRINT(("[System Information] --------------------------------------\n"));
+		BNT_PRINT(("BNT SYSTEM  : Aracore-Miner version 1.0.0\n"));
+		BNT_PRINT(("              %-3d Engines Working\n", handle.nboards*handle.nchips*8));
+		BNT_PRINT(("              %-3d FPGA Installed\n", handle.nboards*handle.nchips));
+		BNT_PRINT(("\n"));
+		BNT_PRINT(("[[ %d ]] START %s-------------------------------------------\n", count, ctime(&ntime)));
 
 		ret = bnt_init(&handle, &info);
 		BNT_CHECK_RESULT(ret, ret);
@@ -350,7 +358,9 @@ int main(int argc, char *argv[])
 
 	} while(1);
 
+#ifdef DEMO
 	bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);
+#endif
 	bnt_close(&handle);
 
 	return ret;

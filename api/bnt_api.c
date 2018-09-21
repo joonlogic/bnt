@@ -491,7 +491,7 @@ bnt_printout_validnonce(
 		T_BntHash* bhash
 		)
 {
-	BNT_PRINT(("\n\n[%d][%02d] ((FOUND!!)) nonce %08X\n",
+	BNT_PRINT(("[%d][%02d] ((FOUND!!)) NONCE %08X\n",
 			board, chip, htonl(bhash->bh.nonce)));
 }
 
@@ -502,7 +502,7 @@ void printout_bh(
     char outstr[65] = {0,};
     time_t ntime = bh->ntime;
 
-    BNT_PRINT(("Version     : %08x\n", ntohl(bh->version)));
+    BNT_PRINT(("Version     : %08X\n", ntohl(bh->version)));
 
     bnt_hash2str(bh->prevhash, outstr);
     BNT_PRINT(("Prev Hash   : %s\n", outstr));
@@ -510,8 +510,8 @@ void printout_bh(
     bnt_hash2str(bh->merkle, outstr);
     BNT_PRINT(("Merkle Root : %s\n", outstr));
 
-    BNT_PRINT(("Time Stamp  : (%08x) %s", ntohl(bh->ntime), ctime(&ntime)));
-    BNT_PRINT(("Bits        : %08x\n", bh->bits));
+    BNT_PRINT(("Time Stamp  : (%08X) %s", ntohl(bh->ntime), ctime(&ntime)));
+    BNT_PRINT(("Bits        : %08X\n", bh->bits));
 
 	memset(outstr, 0x00, sizeof(outstr));
 	bnt_get_targetstr(bh->bits, outstr);
@@ -679,6 +679,10 @@ bnt_get_realnonce(
 		unsigned char mask
 		)
 {
+	//TODO:
+	//TODO: Needs to be updated when ASIC spec is fixed...........
+	//TODO: Now written as 64 Blocks / chip
+	//TODO:
 	unsigned char offset;
 	unsigned int nonce;
 	static const unsigned int window[256] = {
@@ -690,28 +694,28 @@ bnt_get_realnonce(
 		[0x70] = 0x1FFFFFF8,
 		[0xF0] = 0x0FFFFFF8,
 #else
-		[0] = 0xFFFFFFC0,
-		[0x30] = 0x3FFFFFC0,
-		[0x70] = 0x1FFFFFC0,
-		[0xF0] = 0x0FFFFFC0,
+		[0] = 0xFFFFF000,
+		[0x30] = 0x3FFFF000,
+		[0x70] = 0x1FFFF000,
+		[0xF0] = 0x0FFFF000,
 #endif
-		[0x20] = 0x7FFFFFC0,
-		[0x38] = 0x1FFFFFC0,
-		[0x3C] = 0x0FFFFFC0,
-		[0x3E] = 0x07FFFFC0,
-		[0x3F] = 0x03FFFFC0,
-		[0x40] = 0x7FFFFFC0,
-		[0x60] = 0x3FFFFFC0,
-		[0x78] = 0x0FFFFFC0,
-		[0x7C] = 0x07FFFFC0,
-		[0x7E] = 0x03FFFFC0,
-		[0x7F] = 0x01FFFFC0,
-		[0xC0] = 0x3FFFFFC0,
-		[0xE0] = 0x1FFFFFC0,
-		[0xF8] = 0x07FFFFC0,
-		[0xFC] = 0x03FFFFC0,
-		[0xFE] = 0x01FFFFC0,
-		[0xFF] = 0x00FFFFC0,
+		[0x20] = 0x7FFFF000,
+		[0x38] = 0x1FFFF000,
+		[0x3C] = 0x0FFFF000,
+		[0x3E] = 0x07FFF000,
+		[0x3F] = 0x03FFF000,
+		[0x40] = 0x7FFFF000,
+		[0x60] = 0x3FFFF000,
+		[0x78] = 0x0FFFF000,
+		[0x7C] = 0x07FFF000,
+		[0x7E] = 0x03FFF000,
+		[0x7F] = 0x01FFF000,
+		[0xC0] = 0x3FFFF000,
+		[0xE0] = 0x1FFFF000,
+		[0xF8] = 0x07FFF000,
+		[0xFC] = 0x03FFF000,
+		[0xFE] = 0x01FFF000,
+		[0xFF] = 0x00FFF000,
 	};
 
 	offset = ((unsigned char)( mrr & (~window[mask]) ) >> 1) ? 2 : 3;
