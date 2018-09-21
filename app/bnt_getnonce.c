@@ -350,6 +350,7 @@ int main(int argc, char *argv[])
 
 	} while(1);
 
+	bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);
 	bnt_close(&handle);
 
 	return ret;

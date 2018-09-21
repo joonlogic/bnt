@@ -491,7 +491,7 @@ bnt_printout_validnonce(
 		T_BntHash* bhash
 		)
 {
-	BNT_PRINT(("\n\n[%d][%02d] ((FOUND!!)) nonce %08X\n\n",
+	BNT_PRINT(("\n\n[%d][%02d] ((FOUND!!)) nonce %08X\n",
 			board, chip, htonl(bhash->bh.nonce)));
 }
 
