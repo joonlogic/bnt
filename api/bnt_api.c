@@ -589,6 +589,12 @@ bnt_getnonce(
 			}
 		}
 #ifdef DEMO
+		if(Cons_kbhit()) {
+			int ch = Cons_getch();
+			if((ch == 27) || (ch == 'p')) {
+				return ch;
+			}
+		}
 		int localcounter = 0;
 		do {
 			usleep(100000); //100ms
@@ -718,7 +724,7 @@ bnt_get_realnonce(
 		[0xFF] = 0x00FFF000,
 	};
 
-	offset = ((unsigned char)( mrr & (~window[mask]) ) >> 1) ? 2 : 3;
+	offset = ((unsigned char)(mrr & (~window[mask])) >> 1) ? 2 : 3;
 	nonce = (mrr & window[mask]) >> SHIFT_INTERNAL_HASH_ENGINES;
 	nonce -= offset; 
 	nonce <<= SHIFT_INTERNAL_HASH_ENGINES;

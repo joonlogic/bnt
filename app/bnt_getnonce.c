@@ -352,10 +352,40 @@ int main(int argc, char *argv[])
 				count++, bhash.workid, ntime - start_time, ctime(&ntime)));
 
 #ifdef DEMO
-		bnt_set_status_noti_web(&notihandle, "mined", bhash.workid, ctime(&ntime), bhash.bh.nonce);
-		sleep(5);
-#endif
+		if((ret == 27) || (ret == 'p')){ //ESC or 'p'
+			if(ret == 27) {
+				BNT_PRINT(("BYE--------------------------------\n\n"));
+				break;
+			}
+			else if(ret == 'p') {
+				bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);
+				printf("\t--> Press any key to continue...");
+				Plx_getch();
+			}
+		}
+		else {
+			bnt_set_status_noti_web(&notihandle, "mined", bhash.workid, ctime(&ntime), bhash.bh.nonce);
 
+			if(Cons_kbhit()) {
+				int ch = Cons_getch();
+				if(ch == 27) {
+					BNT_PRINT(("BYE--------------------------------\n\n"));
+					break;
+				}
+				else if(ch == 'p'){
+					bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);
+					printf("\t--> Press any key to continue...");
+					Plx_getch();
+				}
+				else sleep(10); 
+			}
+			else sleep(10);
+
+			//ready for 10 secondes...
+			bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);
+			sleep(10);
+		}
+#endif
 	} while(1);
 
 #ifdef DEMO
