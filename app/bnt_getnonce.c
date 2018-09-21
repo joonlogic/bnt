@@ -292,6 +292,16 @@ int main(int argc, char *argv[])
 		printf("Open Board %d\n", i);
 	}
 
+	handle.mask = bnt_get_nonce_mask(handle.nboards, handle.nchips);
+	BNT_INFO(("NONCE MASK %02X\n", handle.mask));
+	printf("\t--> Press any key to continue...");
+#ifdef DEMO
+	ConsoleInitialize();
+	Plx_getch();
+#else
+	getchar();
+#endif
+
 	//process one by one
 	do {
 		readlen = fread((void*)&bhash.bh, sizeof(bhash.bh), 1, handle.bhfp);
@@ -299,11 +309,10 @@ int main(int argc, char *argv[])
 
 #ifdef DEMO
 		//Ready
-		ConsoleInitialize();
 		Cons_clear();
 		Cons_printf(
 			"\n\n"
-			"\t\t        BNT Test Application for hashing \n"
+			"\t\t        BNT Test Application for mining \n"
 			"\t\t                Sep 2018\n\n"
 			);
 #endif
@@ -336,7 +345,7 @@ int main(int argc, char *argv[])
 
 #ifdef DEMO
 		bnt_set_status_noti_web(&notihandle, "mined", bhash.workid, ctime(&ntime), bhash.bh.nonce);
-		sleep(3);
+		sleep(5);
 #endif
 
 	} while(1);

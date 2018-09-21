@@ -589,9 +589,12 @@ bnt_getnonce(
 			}
 		}
 #ifdef DEMO
-		usleep(100000); //100ms
-		BNT_PRINT(("IN PROGRESS : %06d\r", count)); 
-		fflush(stdout); 
+		int localcounter = 0;
+		do {
+			usleep(100000); //100ms
+			BNT_PRINT(("IN PROGRESS : %06d\r", count*10 + localcounter)); 
+			fflush(stdout); 
+		} while(localcounter++<10);
 	} while(count++ < (10*THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1)));
 #else
 		sleep(1);
