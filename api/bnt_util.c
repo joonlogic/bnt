@@ -172,7 +172,7 @@ void bnt_get_targetstr(
 	unsigned int nzerobytes = ((bits >> 24) - 3);
 	unsigned int target_int = bits & 0x00FFFFFF;
 
-	bnt_fill_zeros(32 - (6 + nzerobytes), str); //6 means strlen of target_int
+	bnt_fill_zeros(32 - (3 + nzerobytes), str); //3 means byte length of target_int
 	sprintf(str + strlen(str), "%06X", target_int);
 	bnt_pad_zeros(str);
 }

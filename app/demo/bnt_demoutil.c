@@ -39,7 +39,7 @@ bnt_set_noti_web(
 			"\t\"workid\": \"%d\",\n"
 			"\t\"time\"  : \"%s\",\n"
 			"\t\"target\": \"%s\",\n"
-			"\t\"nonce\" : \"%08X\",\n"
+			"\t\"nonce\" : \"%08X\"\n"
 			"}\n",
 			handle->status,
 			handle->workid,
