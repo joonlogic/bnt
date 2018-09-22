@@ -491,7 +491,7 @@ bnt_printout_validnonce(
 		T_BntHash* bhash
 		)
 {
-	BNT_PRINT(("[%d][%02d] ((FOUND!!)) NONCE %08X\n",
+	BNT_PRINT(("[%d][%02d] (( MINED !! )) NONCE %08X\n",
 			board, chip, htonl(bhash->bh.nonce)));
 }
 
@@ -598,7 +598,7 @@ bnt_getnonce(
 		int localcounter = 0;
 		do {
 			usleep(100000); //100ms
-			BNT_PRINT(("IN PROGRESS : %06d\r", count*10 + localcounter)); 
+			BNT_PRINT(("MINING IN PROGRESS : %06d\r", count*10 + localcounter)); 
 			fflush(stdout); 
 		} while(localcounter++<10);
 	} while(count++ < (10*THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1)));
