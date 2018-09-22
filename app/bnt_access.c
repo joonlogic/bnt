@@ -30,6 +30,7 @@ typedef struct {
 	int            addr;
 	unsigned int   speed;
 	int            verbose;
+	bool           setboard; //set boardid by user
 	bool           isbcast;
 	bool           isdump;
 	bool           isregscan;
@@ -81,6 +82,7 @@ static int parse_opts(int argc, char *argv[], T_AccessInfo* info)
 		switch (c) {
 		case 'b':
 			info->boardid = atoi(optarg);
+			info->setboard = true;
 			break;
 		case 'c':
 			info->chipid = atoi(optarg);
@@ -164,7 +166,7 @@ int main(int argc, char *argv[])
 	BNT_CHECK_RESULT(ret, ret);
 
 	//set board range
-	if(info.isbcast && info.iswrite) {
+	if(info.isbcast && info.iswrite && !info.setboard) {
 		cs_start = 0;
 		cs_end = MAX_SPI_CS;
 	} 
