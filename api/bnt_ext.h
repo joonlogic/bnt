@@ -39,7 +39,8 @@ bnt_str2hex(char* str, int len, unsigned char* hex),
 bnt_hex2str(unsigned char* hex, int hexlen, char* str),
 bnt_printout_validnonce(int board, int chip, T_BntHash* bhash),
 printout_bh(T_BlockHeader* bh),
-printout_hash(unsigned char* hash);
+printout_hash(unsigned char* hash),
+bnt_swap_str(char* instr, char* outstr, int sizebyte);
 
 
 extern void

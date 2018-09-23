@@ -343,9 +343,12 @@ int main(int argc, char *argv[])
 		memset(notihandle.target, 0x00, 65);
 		bnt_get_targetstr(bhash.bh.bits, notihandle.target);
 		bnt_set_status_noti_web(&notihandle, "mining", bhash.workid, ctime(&ntime), 0);
-#endif
+		printout_bh(&bhash.bh);
+
+#else
 		printout_bh(&bhash.bh);
 		printout_hash(bhash.midstate);
+#endif
 
 		ret = bnt_getnonce(&bhash, &handle);
 
@@ -369,7 +372,7 @@ int main(int argc, char *argv[])
 		else {
 			bnt_set_status_noti_web(&notihandle, "mined", bhash.workid, ctime(&ntime), bhash.bh.nonce);
 
-			if(Cons_kbhit()) {
+/*			if(Cons_kbhit()) {
 				int ch = Cons_getch();
 				if(ch == 27) {
 					BNT_PRINT(("BYE--------------------------------\n\n"));
@@ -382,7 +385,9 @@ int main(int argc, char *argv[])
 				}
 				else sleep(10); 
 			}
-			else sleep(10);
+			else 
+*/
+			sleep(10);
 
 			//ready for 10 secondes...
 			bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);

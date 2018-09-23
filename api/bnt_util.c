@@ -176,3 +176,18 @@ void bnt_get_targetstr(
 	sprintf(str + strlen(str), "%06X", target_int);
 	bnt_pad_zeros(str);
 }
+
+void bnt_swap_str(
+		char* instr,
+		char* outstr,
+		int   sizebyte
+		)
+{
+	if(!instr) return;
+	if(!outstr) return;
+
+	instr = instr + sizebyte - 1; 
+	do {
+		*outstr++ = *instr--;
+	} while(--sizebyte > 0);
+}

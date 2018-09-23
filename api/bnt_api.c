@@ -502,6 +502,29 @@ void printout_bh(
     char outstr[65] = {0,};
     time_t ntime = bh->ntime;
 
+#ifdef DEMO //need byte swap
+    BNT_PRINT(("Version     : %08X\n", bh->version));
+
+	char swapstr[65] = {0,};
+    bnt_hash2str(bh->prevhash, outstr);
+	bnt_swap_str(outstr, swapstr, 64);
+    BNT_PRINT(("Prev Hash   : %s\n", swapstr));
+
+    bnt_hash2str(bh->merkle, outstr);
+	bnt_swap_str(outstr, swapstr, 64);
+    BNT_PRINT(("Merkle Root : %s\n", swapstr));
+
+    BNT_PRINT(("Time Stamp  : %s", ctime(&ntime)));
+//    BNT_PRINT(("Bits        : %08X\n", bh->bits));
+
+	memset(outstr, 0x00, sizeof(outstr));
+	bnt_get_targetstr(bh->bits, outstr);
+    BNT_PRINT(("Hash Target : %s\n", outstr));
+
+    BNT_PRINT(("Nonce       : 00000000\n"));
+	BNT_PRINT(("\n\n"));
+
+#else
     BNT_PRINT(("Version     : %08X\n", ntohl(bh->version)));
 
     bnt_hash2str(bh->prevhash, outstr);
@@ -517,10 +540,6 @@ void printout_bh(
 	bnt_get_targetstr(bh->bits, outstr);
     BNT_PRINT(("Target      : %s\n", outstr));
 
-#ifdef DEMO
-    BNT_PRINT(("Nonce       : 00000000\n"));
-	BNT_PRINT(("\n\n"));
-#else
     BNT_PRINT(("Nonce       : %08X\n", ntohl(bh->nonce)));
 #endif
 }
@@ -529,12 +548,10 @@ void printout_hash(
         unsigned char* hash
         )
 {
-#ifndef DEMO
     char outstr[65] = {0,};
 
     bnt_hash2str(hash, outstr);
     BNT_PRINT(("Hash String : %s\n", outstr));
-#endif
 }
 
 
