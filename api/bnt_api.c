@@ -513,13 +513,15 @@ bnt_test_validnonce_out(
 	bnt_gethash((unsigned char*)&bhash->bh, sizeof(bhash->bh), hashout);
 	bnt_gethash(hashout, sizeof(hashout), hashout);
 
-	printout_hash_swap(hashout, "HASH OUT    "); 
+	unsigned char hashoutswap[32] = {0,};
+	bnt_swap_byte(hashout, hashoutswap, 32);
+	printout_hash(hashoutswap, "HASH OUT    "); 
 
 	//TODO: compare target
 	unsigned int bits = 0;
-	bits = bnt_get_bits(hashout);
+	bits = bnt_get_bits(hashoutswap);
 
-	printf("%s: bhash->bh.bits %08X vs bits %08X\n",
+	printf("%s: target bits %08X vs found bits %08X\n",
 			__func__, bhash->bh.bits, bits);
 
 	return bits < bhash->bh.bits ? true : false;
