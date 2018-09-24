@@ -453,6 +453,7 @@ bnt_read_mrr(
 	return 0;
 }
 
+//compare nonce out with the nonce of the block chain header already mined.
 bool
 bnt_test_validnonce(
 		T_BntHash* bhash,
@@ -484,6 +485,46 @@ bnt_test_validnonce(
 	return true; 
 }
 
+//calculate hash and compare target bits
+bool
+bnt_test_validnonce_out(
+		T_BntHash* bhash,
+		T_BntHashMRR* mrr,
+		T_BntHandle* handle,
+		int board,
+		int chip
+		)
+{
+	//check work id
+	if(bhash->workid != mrr->workid) {
+		BNT_INFO(("%s: mismatch workid. bhash->workid %02X vs mrr->workid %02X\n",
+				__func__, bhash->workid, mrr->workid));
+		return false;
+	}
+
+	//check nonce
+	unsigned int realnonce = 0;
+	realnonce = bnt_get_realnonce(mrr->nonceout, handle->mask);
+
+	BNT_INFO(("\n[%d][%02d] FOUND : NONCE %08X\n", board, chip, realnonce));
+	bhash->bh.nonce = ntohl(realnonce);
+
+	unsigned char hashout[32] = {0,};
+	bnt_gethash((unsigned char*)&bhash->bh, sizeof(bhash->bh), hashout);
+	bnt_gethash(hashout, sizeof(hashout), hashout);
+
+	printout_hash_swap(hashout, "HASH OUT    "); 
+
+	//TODO: compare target
+	unsigned int bits = 0;
+	bits = bnt_get_bits(hashout);
+
+	printf("%s: bhash->bh.bits %08X vs bits %08X\n",
+			__func__, bhash->bh.bits, bits);
+
+	return bits < bhash->bh.bits ? true : false;
+}
+
 void
 bnt_printout_validnonce(
 		int board,
@@ -507,11 +548,11 @@ void printout_bh(
 
 	char swapstr[65] = {0,};
     bnt_hash2str(bh->prevhash, outstr);
-	bnt_swap_str(outstr, swapstr, 64);
+	bnt_swap_byte((unsigned char*)outstr, (unsigned char*)swapstr, 64);
     BNT_PRINT(("Prev Hash   : %s\n", swapstr));
 
     bnt_hash2str(bh->merkle, outstr);
-	bnt_swap_str(outstr, swapstr, 64);
+	bnt_swap_byte((unsigned char*)outstr, (unsigned char*)swapstr, 64);
     BNT_PRINT(("Merkle Root : %s\n", swapstr));
 
     BNT_PRINT(("Time Stamp  : %s", ctime(&ntime)));
@@ -545,13 +586,27 @@ void printout_bh(
 }
 
 void printout_hash(
-        unsigned char* hash
+        unsigned char* hash,
+		char* title
         )
 {
     char outstr[65] = {0,};
 
     bnt_hash2str(hash, outstr);
-    BNT_PRINT(("Hash String : %s\n", outstr));
+    BNT_PRINT(("%s: %s\n", title, outstr));
+}
+
+void printout_hash_swap(
+        unsigned char* hash,
+		char* title
+        )
+{
+    char outstr[65] = {0,};
+    char swapstr[65] = {0,};
+
+    bnt_hash2str(hash, outstr);
+	bnt_swap_byte((unsigned char*)outstr, (unsigned char*)swapstr, 64);
+    BNT_PRINT(("%s: %s\n", title, swapstr));
 }
 
 
@@ -596,7 +651,11 @@ bnt_getnonce(
 						&mrr
 						);
 
+#ifdef DEMO
 				isvalid = bnt_test_validnonce(bhash, &mrr, handle, board, chip);
+#else
+				isvalid = bnt_test_validnonce_out(bhash, &mrr, handle, board, chip);
+#endif
 				if(isvalid) {
 					//found it
 					bnt_printout_validnonce(board, chip, bhash);

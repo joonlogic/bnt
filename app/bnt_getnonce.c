@@ -347,7 +347,7 @@ int main(int argc, char *argv[])
 
 #else
 		printout_bh(&bhash.bh);
-		printout_hash(bhash.midstate);
+		printout_hash(bhash.midstate, "Mid State   ");
 #endif
 
 		ret = bnt_getnonce(&bhash, &handle);
