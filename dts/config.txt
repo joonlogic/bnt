@@ -50,8 +50,16 @@ dtparam=spi=on
 #SPI CS GPIO for BNT427
 dtoverlay=spi-gpio-cs
 
+#I2C multiple buses
+# GPIO23(SDA)/24(SCL) for bus3 default
+dtoverlay=i2c-gpio,bus=3,i2c_gpio_delay_us=1  
+dtoverlay=i2c-gpio,bus=4,i2c_gpio_delay_us=1,i2c_gpio_sda=13,i2c_gpio_scl=19
+
 #RESET GPIO for BNT427
-gpio=5=op,dh
+#gpio=5=op,dl,pd
+#gpio=6=op,dl,pd
+#gpio=13=op,dl,pd
+#gpio=19=op,dl,pd
 
 # Uncomment this to enable the lirc-rpi module
 #dtoverlay=lirc-rpi
