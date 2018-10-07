@@ -159,7 +159,8 @@ bnt_init(
 	handle->idshift = bnt_get_id_shift(handle->nchips);
 	handle->ssr = ((unsigned short)handle->mask) << I_SSR_MASK;
 	
-//	handle->ssr |= (1<<2); //64bit
+	handle->ssr |= (1<<2); //64bit
+	BNT_INFO(("64 Bits mode\n"));
 
 	unsigned short ssr = htons(handle->ssr);
 	bnt_write_all(
@@ -194,7 +195,7 @@ bnt_init(
 					sizeof(ssr),
 					false
 				   );
-			ssr = ntohs(ssr) & 0xFF00;
+			ssr = ntohs(ssr) & 0xFF04;
 
 			if(ssr != handle->ssr) {
 				int retry = 0;
