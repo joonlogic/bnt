@@ -39,7 +39,9 @@ bnt_str2hex(char* str, int len, unsigned char* hex),
 bnt_hex2str(unsigned char* hex, int hexlen, char* str),
 bnt_printout_validnonce(int board, int chip, T_BntHash* bhash),
 printout_bh(T_BlockHeader* bh),
-printout_hash(unsigned char* hash);
+printout_hash(unsigned char* hash, char* title),
+printout_hash_swap(unsigned char* hash, char* title),
+bnt_swap_byte(unsigned char* in, unsigned char* out, int sizebyte);
 
 
 extern void
@@ -63,7 +65,8 @@ bnt_pop_fifo(int fd, int chipid, bool broadcast, T_BntHandle* handle),
 bnt_set_interrupt(int fd, int chipid, EnumInterruptKind ikind, bool enable, bool broadcast, T_BntHandle* handle);
 
 extern unsigned int
-bnt_get_realnonce(unsigned int mrr, unsigned char mask);
+bnt_get_realnonce(unsigned int mrr, unsigned char mask),
+bnt_get_bits(unsigned char* hash);
 
 
 #endif // BNT_EXT_H

@@ -159,7 +159,8 @@ bnt_init(
 	handle->idshift = bnt_get_id_shift(handle->nchips);
 	handle->ssr = ((unsigned short)handle->mask) << I_SSR_MASK;
 	
-//	handle->ssr |= (1<<2); //64bit
+	handle->ssr |= (1<<2); //64bit
+	BNT_INFO(("64 Bits mode\n"));
 
 	unsigned short ssr = htons(handle->ssr);
 	bnt_write_all(
@@ -194,7 +195,7 @@ bnt_init(
 					sizeof(ssr),
 					false
 				   );
-			ssr = ntohs(ssr) & 0xFF00;
+			ssr = ntohs(ssr) & 0xFF04;
 
 			if(ssr != handle->ssr) {
 				int retry = 0;
@@ -329,7 +330,7 @@ int main(int argc, char *argv[])
 		BNT_PRINT(("              %-3d Engines Working\n", handle.nboards*handle.nchips*8));
 		BNT_PRINT(("              %-3d FPGA Installed\n", handle.nboards*handle.nchips));
 		BNT_PRINT(("\n"));
-		BNT_PRINT(("[[ %d ]] START %s-------------------------------------------\n", count, ctime(&ntime)));
+		BNT_PRINT(("[[ %d ]] START %s-------------------------------------------\n", count+1, ctime(&ntime)));
 
 		ret = bnt_init(&handle, &info);
 		BNT_CHECK_RESULT(ret, ret);
@@ -343,15 +344,19 @@ int main(int argc, char *argv[])
 		memset(notihandle.target, 0x00, 65);
 		bnt_get_targetstr(bhash.bh.bits, notihandle.target);
 		bnt_set_status_noti_web(&notihandle, "mining", bhash.workid, ctime(&ntime), 0);
-#endif
 		printout_bh(&bhash.bh);
-		printout_hash(bhash.midstate);
+
+#else
+		printout_bh(&bhash.bh);
+		printout_hash(bhash.midstate, "Mid State   ");
+#endif
 
 		ret = bnt_getnonce(&bhash, &handle);
 
 		ntime = time(NULL);
 		BNT_PRINT(("[%d] Workid %d Passed ( %ld sec consumed ) : DATE %s \n\n", 
-				count++, bhash.workid, ntime - start_time, ctime(&ntime)));
+				count+1, bhash.workid, ntime - start_time, ctime(&ntime)));
+		count++;
 
 #ifdef DEMO
 		if((ret == 27) || (ret == 'p')){ //ESC or 'p'
@@ -368,7 +373,7 @@ int main(int argc, char *argv[])
 		else {
 			bnt_set_status_noti_web(&notihandle, "mined", bhash.workid, ctime(&ntime), bhash.bh.nonce);
 
-			if(Cons_kbhit()) {
+/*			if(Cons_kbhit()) {
 				int ch = Cons_getch();
 				if(ch == 27) {
 					BNT_PRINT(("BYE--------------------------------\n\n"));
@@ -381,7 +386,9 @@ int main(int argc, char *argv[])
 				}
 				else sleep(10); 
 			}
-			else sleep(10);
+			else 
+*/
+			sleep(10);
 
 			//ready for 10 secondes...
 			bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);

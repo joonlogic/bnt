@@ -453,6 +453,7 @@ bnt_read_mrr(
 	return 0;
 }
 
+//compare nonce out with the nonce of the block chain header already mined.
 bool
 bnt_test_validnonce(
 		T_BntHash* bhash,
@@ -484,6 +485,48 @@ bnt_test_validnonce(
 	return true; 
 }
 
+//calculate hash and compare target bits
+bool
+bnt_test_validnonce_out(
+		T_BntHash* bhash,
+		T_BntHashMRR* mrr,
+		T_BntHandle* handle,
+		int board,
+		int chip
+		)
+{
+	//check work id
+	if(bhash->workid != mrr->workid) {
+		BNT_INFO(("%s: mismatch workid. bhash->workid %02X vs mrr->workid %02X\n",
+				__func__, bhash->workid, mrr->workid));
+		return false;
+	}
+
+	//check nonce
+	unsigned int realnonce = 0;
+	realnonce = bnt_get_realnonce(mrr->nonceout, handle->mask);
+
+	BNT_INFO(("\n[%d][%02d] FOUND : NONCE %08X\n", board, chip, realnonce));
+	bhash->bh.nonce = ntohl(realnonce);
+
+	unsigned char hashout[32] = {0,};
+	bnt_gethash((unsigned char*)&bhash->bh, sizeof(bhash->bh), hashout);
+	bnt_gethash(hashout, sizeof(hashout), hashout);
+
+	unsigned char hashoutswap[32] = {0,};
+	bnt_swap_byte(hashout, hashoutswap, 32);
+	printout_hash(hashoutswap, "HASH OUT    "); 
+
+	//TODO: compare target
+	unsigned int bits = 0;
+	bits = bnt_get_bits(hashoutswap);
+
+	printf("%s: target bits %08X vs found bits %08X\n",
+			__func__, bhash->bh.bits, bits);
+
+	return bits < bhash->bh.bits ? true : false;
+}
+
 void
 bnt_printout_validnonce(
 		int board,
@@ -491,7 +534,7 @@ bnt_printout_validnonce(
 		T_BntHash* bhash
 		)
 {
-	BNT_PRINT(("[%d][%02d] ((FOUND!!)) NONCE %08X\n",
+	BNT_PRINT(("[%d][%02d] (( MINED !! )) NONCE %08X\n",
 			board, chip, htonl(bhash->bh.nonce)));
 }
 
@@ -502,6 +545,29 @@ void printout_bh(
     char outstr[65] = {0,};
     time_t ntime = bh->ntime;
 
+#ifdef DEMO //need byte swap
+    BNT_PRINT(("Version     : %08X\n", bh->version));
+
+	char swapstr[65] = {0,};
+    bnt_hash2str(bh->prevhash, outstr);
+	bnt_swap_byte((unsigned char*)outstr, (unsigned char*)swapstr, 64);
+    BNT_PRINT(("Prev Hash   : %s\n", swapstr));
+
+    bnt_hash2str(bh->merkle, outstr);
+	bnt_swap_byte((unsigned char*)outstr, (unsigned char*)swapstr, 64);
+    BNT_PRINT(("Merkle Root : %s\n", swapstr));
+
+    BNT_PRINT(("Time Stamp  : %s", ctime(&ntime)));
+//    BNT_PRINT(("Bits        : %08X\n", bh->bits));
+
+	memset(outstr, 0x00, sizeof(outstr));
+	bnt_get_targetstr(bh->bits, outstr);
+    BNT_PRINT(("Hash Target : %s\n", outstr));
+
+    BNT_PRINT(("Nonce       : 00000000\n"));
+	BNT_PRINT(("\n\n"));
+
+#else
     BNT_PRINT(("Version     : %08X\n", ntohl(bh->version)));
 
     bnt_hash2str(bh->prevhash, outstr);
@@ -517,24 +583,32 @@ void printout_bh(
 	bnt_get_targetstr(bh->bits, outstr);
     BNT_PRINT(("Target      : %s\n", outstr));
 
-#ifdef DEMO
-    BNT_PRINT(("Nonce       : 00000000\n"));
-	BNT_PRINT(("\n\n"));
-#else
     BNT_PRINT(("Nonce       : %08X\n", ntohl(bh->nonce)));
 #endif
 }
 
 void printout_hash(
-        unsigned char* hash
+        unsigned char* hash,
+		char* title
         )
 {
-#ifndef DEMO
     char outstr[65] = {0,};
 
     bnt_hash2str(hash, outstr);
-    BNT_PRINT(("Hash String : %s\n", outstr));
-#endif
+    BNT_PRINT(("%s: %s\n", title, outstr));
+}
+
+void printout_hash_swap(
+        unsigned char* hash,
+		char* title
+        )
+{
+    char outstr[65] = {0,};
+    char swapstr[65] = {0,};
+
+    bnt_hash2str(hash, outstr);
+	bnt_swap_byte((unsigned char*)outstr, (unsigned char*)swapstr, 64);
+    BNT_PRINT(("%s: %s\n", title, swapstr));
 }
 
 
@@ -579,7 +653,11 @@ bnt_getnonce(
 						&mrr
 						);
 
+#ifdef DEMO
 				isvalid = bnt_test_validnonce(bhash, &mrr, handle, board, chip);
+#else
+				isvalid = bnt_test_validnonce_out(bhash, &mrr, handle, board, chip);
+#endif
 				if(isvalid) {
 					//found it
 					bnt_printout_validnonce(board, chip, bhash);
@@ -598,7 +676,7 @@ bnt_getnonce(
 		int localcounter = 0;
 		do {
 			usleep(100000); //100ms
-			BNT_PRINT(("IN PROGRESS : %06d\r", count*10 + localcounter)); 
+			BNT_PRINT(("MINING IN PROGRESS : %06d\r", count*10 + localcounter)); 
 			fflush(stdout); 
 		} while(localcounter++<10);
 	} while(count++ < (10*THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1)));

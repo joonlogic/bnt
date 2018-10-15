@@ -176,3 +176,44 @@ void bnt_get_targetstr(
 	sprintf(str + strlen(str), "%06X", target_int);
 	bnt_pad_zeros(str);
 }
+
+void bnt_swap_byte(
+		unsigned char* in,
+		unsigned char* out,
+		int   sizebyte
+		)
+{
+	if(!in || !out) return;
+
+	in += sizebyte - 1; 
+	do {
+		*out++ = *in--;
+	} while(--sizebyte > 0);
+}
+
+//TODO: compare with open source
+unsigned int bnt_get_bits(
+		unsigned char* hash
+		)
+{
+//input hash is hex format
+	int zerobyte = 0;
+	unsigned int bits_0 = 0;
+	unsigned int bits = 0;
+
+	do {
+		if(hash[zerobyte]) break;
+	} while(zerobyte++ < 32);
+	
+	if(zerobyte == 32) {
+		printf("%s: Something Wrong. zerobyte %d\n", __func__, zerobyte);
+		return 0x7FFFFFFF;
+	}
+
+	bits_0 = 32 - zerobyte;
+	bits = (bits_0 << 24) | ((ntohl(*(unsigned int*)&hash[zerobyte]))>>8);
+
+	printf("%s: MY BITS ARE %08X\n", __func__, bits);
+
+	return bits; 
+}
