@@ -154,21 +154,30 @@ bnt_init(
 	//set Mask
 	handle->mask = bnt_get_nonce_mask(handle->nboards, handle->nchips);
 #ifndef DEMO
-	BNT_INFO(("MASK %02X\n", handle->mask));
+	BNT_INFO(("MASK %04X\n", handle->mask));
 #endif
 	handle->idshift = bnt_get_id_shift(handle->nchips);
-	handle->ssr = ((unsigned short)handle->mask) << I_SSR_MASK;
+	handle->ssr = handle->mask << I_SSR_MASK;
 	
+#if 0
 	handle->ssr |= (1<<2); //64bit
 	BNT_INFO(("64 Bits mode\n"));
+#endif
 
-	unsigned short ssr = htons(handle->ssr);
-	bnt_write_all(
-			SSR, 
-			&ssr,
-			sizeof(ssr),
-			handle
-			);
+	unsigned short ssr = 0;
+
+	for(int i=0; i<MAX_NBOARDS; i++) {
+		if(handle->spifd[i] <= 0) continue;
+
+		ssr = htons(handle->ssr | (i << I_SSR_BOARDID));
+		bnt_write_board(
+				SSR, 
+				&ssr,
+				sizeof(ssr),
+				i,
+				handle
+				);
+	}
 
 #ifdef FPGA
 	if(info->fast) {
@@ -180,11 +189,14 @@ bnt_init(
 				handle
 				);
 	}
+#else
+	//set PLL
 #endif
 
 	//Verify and logging
 	for(int board=0; board<MAX_NBOARDS; board++) {
 		if(handle->spifd[board] <= 0) continue;
+		unsigned short ssr_wr = handle->ssr | (board << I_SSR_BOARDID);
 		int chipid_step = 1 << bnt_get_id_shift(handle->nchips);
 		for(int chip=0; chip<MAX_NCHIPS_PER_BOARD; chip+=chipid_step) {
 			regread(
@@ -195,20 +207,18 @@ bnt_init(
 					sizeof(ssr),
 					false
 				   );
-			ssr = ntohs(ssr) & 0xFF04;
+			ssr = ntohs(ssr) & 0xFFF4;
 
-			if(ssr != handle->ssr) {
+			if(ssr != ssr_wr) {
 				int retry = 0;
 				do {
-					ssr = htons(handle->ssr);
 					regwrite(handle->spifd[board], 0, SSR, &ssr, sizeof(ssr), (int)true, false);
 					regread(handle->spifd[board], chip, SSR, &ssr, sizeof(ssr), false);
-					ssr = ntohs(ssr) & 0xFF00;
-				} while((ssr != handle->ssr) && (retry++ < 5));
+					ssr = ntohs(ssr) & 0xFFF4;
+				} while((ssr != ssr_wr) && (retry++ < 5));
 
-				BNT_PRINT(("Retried:[%d][%02d] SSR %04X\n", board, chip, ssr)); 
+				BNT_PRINT(("Retried:[%d][%03d] SSR %04X SSR_WR %04X\n", board, chip, ssr, ssr_wr)); 
 			}
-//			BNT_CHECK_TRUE(ssr==handle->ssr, -1);
 			ssr = 0; 
 		}
 	}
@@ -298,7 +308,7 @@ int main(int argc, char *argv[])
 	}
 
 	handle.mask = bnt_get_nonce_mask(handle.nboards, handle.nchips);
-	BNT_INFO(("NONCE MASK %02X\n", handle.mask));
+	BNT_INFO(("NONCE MASK %04X\n", handle.mask));
 	printf("\t--> Press any key to continue...");
 #ifdef DEMO
 	ConsoleInitialize();
@@ -325,7 +335,6 @@ int main(int argc, char *argv[])
 		//initialize
 		ntime = time(NULL);
 		start_time = ntime;
-//		BNT_PRINT(("[System Information] --------------------------------------\n"));
 		BNT_PRINT(("BNT SYSTEM  : Aracore-Miner version 1.0.0\n"));
 		BNT_PRINT(("              %-3d Engines Working\n", handle.nboards*handle.nchips*8));
 		BNT_PRINT(("              %-3d FPGA Installed\n", handle.nboards*handle.nchips));
@@ -373,21 +382,6 @@ int main(int argc, char *argv[])
 		else {
 			bnt_set_status_noti_web(&notihandle, "mined", bhash.workid, ctime(&ntime), bhash.bh.nonce);
 
-/*			if(Cons_kbhit()) {
-				int ch = Cons_getch();
-				if(ch == 27) {
-					BNT_PRINT(("BYE--------------------------------\n\n"));
-					break;
-				}
-				else if(ch == 'p'){
-					bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);
-					printf("\t--> Press any key to continue...");
-					Plx_getch();
-				}
-				else sleep(10); 
-			}
-			else 
-*/
 			sleep(10);
 
 			//ready for 10 secondes...

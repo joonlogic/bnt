@@ -46,10 +46,11 @@ bnt_swap_byte(unsigned char* in, unsigned char* out, int sizebyte);
 
 extern void
 bnt_write_all(int regaddr, void* buf, int wrbytes, T_BntHandle* handle),
+bnt_write_board(int regaddr, void* buf, int wrbytes, int boardid, T_BntHandle* handle),
 bnt_get_targetstr(unsigned int bits, char* str);
 
 
-extern unsigned char bnt_get_nonce_mask(int nboards, int nchips);
+extern unsigned short bnt_get_nonce_mask(int nboards, int nchips);
 extern bool
 bnt_test_validnonce(T_BntHash* bhash, T_BntHashMRR* mrr, T_BntHandle* handle, int board, int chip);
 
@@ -65,7 +66,7 @@ bnt_pop_fifo(int fd, int chipid, bool broadcast, T_BntHandle* handle),
 bnt_set_interrupt(int fd, int chipid, EnumInterruptKind ikind, bool enable, bool broadcast, T_BntHandle* handle);
 
 extern unsigned int
-bnt_get_realnonce(unsigned int mrr, unsigned char mask),
+bnt_get_realnonce(unsigned int mrr, unsigned short mask),
 bnt_get_bits(unsigned char* hash);
 
 

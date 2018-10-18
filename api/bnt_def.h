@@ -69,13 +69,15 @@
 
 #define HEADER_CMD(CMD)                    ((CMD)?0x80:0)
 #define HEADER_BCAST(ISBCAST)              ((ISBCAST)?0x40:0)
-#define HEADER_CHIPID(CHIPID)              ((CHIPID)&0x3F)
-#define HEADER_REGADDR(ADDR)               ((ADDR)&0xFF)
+#define HEADER_CHIPID(CHIPID)              ((CHIPID)&0xFF)
+#define HEADER_CHIPID_1(CHIPID)            ((CHIPID)&0xFC)
+#define HEADER_CHIPID_2(CHIPID)            ((CHIPID)&0x03)
+#define HEADER_REGADDR(ADDR)               ((ADDR)&0x3F)
 #define HEADER_DLEN(BYTE)                  (((BYTE)>>1)&0xFF)
 
 #define HEADER_FIRST(CMD, BCAST, CHIPID)   \
-	(HEADER_CMD(CMD) | HEADER_BCAST(BCAST) | HEADER_CHIPID(CHIPID))
-#define HEADER_SECOND(REGADDR)             HEADER_REGADDR(REGADDR)
+	(HEADER_CMD(CMD) | HEADER_BCAST(BCAST) | (HEADER_CHIPID_1(CHIPID)>>2))
+#define HEADER_SECOND(CHIPID, REGADDR)     ((HEADER_CHIPID_2(CHIPID)<<6) | HEADER_REGADDR(REGADDR))
 #define HEADER_THIRD(BYTE)                 HEADER_DLEN(BYTE)
 
 #define LENGTH_SPI_MSG(DATA_BYTES)         LENGTH_MSG_HEADER + (DATA_BYTES)
@@ -88,12 +90,12 @@
 /////
 ///// BNT system
 /////
-#define MAX_CHIPID                         0x3F
+#define MAX_CHIPID                         0xFF
 #define MAX_NBOARDS                        4
-#define MAX_NCHIPS_PER_BOARD               64
+#define MAX_NCHIPS_PER_BOARD               256    // should be <= nboards x nchips = 1024
 
 #define BITS_BOARDID                       2
-#define BITS_CHIPID                        6
+#define BITS_CHIPID                        8
 
 #define CHIPID_PHYSICAL(ID_LOGICAL, HANDLE) \
 	((ID_LOGICAL) << (HANDLE)->idshift)       
@@ -102,8 +104,8 @@
 #define N_INTERNAL_HASH_ENGINES            8
 #define SHIFT_INTERNAL_HASH_ENGINES        3
 #else
-#define N_INTERNAL_HASH_ENGINES            64
-#define SHIFT_INTERNAL_HASH_ENGINES        6
+#define N_INTERNAL_HASH_ENGINES            1024
+#define SHIFT_INTERNAL_HASH_ENGINES        10     //16 + 64
 #endif
 
 #define LAST_CHIPID(NCHIPS)                (MAX_NCHIPS_PER_BOARD - (MAX_NCHIPS_PER_BOARD/(NCHIPS)))
@@ -119,7 +121,7 @@ typedef enum {
     PSR = 0x02,   // (RW) PLL Set Register
     IER = 0x03,   // (RW) Interrupt Enable Register
     ISR = 0x04,   // (RW) Interrupt Status Register
-    SNR = 0x05,   // (RO) Status Notification Register
+    TSR = 0x05,   // (RW) Turbo Mode Set Register
     HVR0 = 0x06,   // (RW) Hash Value Set Register 0
     HVR1 = 0x07,   // (RW) Hash Value Set Register 1
     HVR2 = 0x08,   // (RW) Hash Value Set Register 2
@@ -154,35 +156,37 @@ typedef enum {
 //V_ means valid size for the field
 #define MASKFOR_LENGTH(LEN)                 ((1<<(LEN))-1)
 
-#define IDR_SIGNATURE                       0x1AB //427
-#define I_IDR_SIGNATURE                     7
-#define V_IDR_SIGNATURE                     9
+#define IDR_SIGNATURE                       0xD5 //427
 #define I_IDR_CHIPID                        0
-#define V_IDR_CHIPID                        6
+#define V_IDR_CHIPID                        8
+#define I_IDR_SIGNATURE                     8
+#define V_IDR_SIGNATURE                     8
 
 #define I_SSR_SOFTRESET                     0
 #define V_SSR_SOFTRESET                     1
-#define I_SSR_ADMINMODE                     1
-#define V_SSR_ADMINMODE                     1
+#define I_SSR_TESTMODE                      1
+#define V_SSR_TESTMODE                      1
 #define I_SSR_DATABITS                      2
 #define V_SSR_DATABITS                      1
-#define I_SSR_MASK                          8
-#define V_SSR_MASK                          8
+#define I_SSR_BOARDID                       4
+#define V_SSR_BOARDID                       2
+#define I_SSR_MASK                          6
+#define V_SSR_MASK                          10
 
-#define I_PSR_PLL                           0
-#define V_PSR_PLL                           8
+#define I_PSR_M                             0
+#define V_PSR_M                             7
+#define I_PSR_P                             7
+#define V_PSR_P                             6
+#define I_PSR_S                             13
+#define V_PSR_S                             3
 
-#define I_IER_OVERHEAT                      0
-#define V_IER_OVERHEAT                      1
-#define I_IER_MINED                         1
+#define I_IER_MINED                         0
 #define V_IER_MINED                         1
-#define I_IER_RSLT_FIFO_ALMOST_FULL         2
+#define I_IER_RSLT_FIFO_ALMOST_FULL         1
 #define V_IER_RSLT_FIFO_ALMOST_FULL         1
-#define I_IER_BHV_FIFO_FULL                 3
+#define I_IER_BHV_FIFO_FULL                 2
 #define V_IER_BHV_FIFO_FULL                 1
 
-#define I_ISR_OVERHEAT                      0
-#define V_ISR_OVERHEAT                      1
 #define I_ISR_MINED                         1
 #define V_ISR_MINED                         1
 #define I_ISR_RSLT_FIFO_ALMOST_FULL         2
@@ -190,8 +194,8 @@ typedef enum {
 #define I_ISR_BHV_FIFO_FULL                 3
 #define V_ISR_BHV_FIFO_FULL                 1
 
-#define I_SNR_TEMPERATURE                   0
-#define V_SNR_TEMPERATURE                   9
+#define I_TSR_TURBOMODE                     0
+#define V_TSR_TURBOMODE                     2
 
 #define I_HVR0_HASHID                       0
 #define V_HVR0_HASHID                       8
@@ -199,6 +203,8 @@ typedef enum {
 
 #define I_MRR0_HASHID                       0
 #define V_MRR0_HASHID                       8
+#define I_MRR0_EXTRA_HASHID                 8
+#define V_MRR0_EXTRA_HASHID                 3
 
 
 /////
@@ -228,7 +234,7 @@ typedef struct {
     int            gpiofd[MAX_NBOARDS];
     int            nonce_mode;
     unsigned short ssr;
-    unsigned char  mask;
+    unsigned short mask;
     FILE*          bhfp;
     //TODO: 
     //thread
@@ -279,17 +285,16 @@ typedef struct { //HVR
 } T_BntHashHVR;
 
 typedef struct {
-	unsigned char   reserved;
+	unsigned char   extraid;
 	unsigned char   workid;  //BNT internal
 	unsigned int    nonceout;
 } T_BntHashMRR;
 
 typedef enum {
-	IntOverHeat = 1,
-	IntMined = 2,
-	IntResultFifoAlmostFull = 4,
-	IntBHVFifoFull = 8,
-	IntAll = 1|2|4|8 
+	IntMined = 1,
+	IntResultFifoAlmostFull = 2,
+	IntBHVFifoFull = 4,
+	IntAll = 1|2|4
 } EnumInterruptKind;
 
 

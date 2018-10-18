@@ -124,7 +124,7 @@ bool do_memtest(
 	int cmp = 0;
 	int count = 0;
 
-	printf("\t[%d][%02d] TEST PATTERN %02X%02X : ", csidx, chipid, pattern, pattern);
+	printf("\t[%d][%03d] TEST PATTERN %02X%02X : ", csidx, chipid, pattern, pattern);
 	memset(buf, pattern, SIZE_TOTAL_HVR_BYTE);
 	regwrite(fd, chipid, HVR0, buf, SIZE_TOTAL_HVR_BYTE, (int)bcast, false);
 
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 			bnt_softreset(fd, chipid, false);
 
 			//1. For each mode
-			printf("[[%d][%02d]] (1) Write & Read (for each) ---------------------\n", csidx, chipid);
+			printf("[[%d][%03d]] (1) Write & Read (for each) ---------------------\n", csidx, chipid);
 			for(int i=0; i<sizeof(pattern); i++) {
 				result = do_memtest(fd, csidx, chipid, pattern[i], false); 
 				if(!result) break;
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 			if(!result) continue;
 
 			//2. Broadcast write mode
-			printf("[[%d][%02d]] (2) Write & Read (Broadcast) -------------------\n", csidx, chipid);
+			printf("[[%d][%03d]] (2) Write & Read (Broadcast) -------------------\n", csidx, chipid);
 			for(int i=0; i<sizeof(pattern); i++) {
 				result = do_memtest(fd, csidx, chipid, pattern[i], true); 
 				if(!result) break;

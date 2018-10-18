@@ -40,7 +40,7 @@ regwrite(
 	int ret = 0;
 
 	access->cmdid = HEADER_FIRST(CMD_WRITE, isbcast, isbcast ? 0x3F : chipid);
-	access->addr = HEADER_SECOND(regaddr);
+	access->addr = HEADER_SECOND(isbcast ? 0x03 : chipid, regaddr);
 	access->length = HEADER_THIRD(wrbytes);
 	memcpy(access->data, buf, wrbytes);
 
@@ -68,7 +68,7 @@ regread(
 	int ret = 0;
 
 	access->cmdid = HEADER_FIRST(CMD_READ, CMD_UNICAST, chipid);
-	access->addr = HEADER_SECOND(regaddr);
+	access->addr = HEADER_SECOND(chipid, regaddr);
 	access->length = HEADER_THIRD(rdbytes);
 
 	txlen = LENGTH_SPI_MSG(0);
@@ -103,7 +103,7 @@ regdump(
 	rxlen = SIZE_REG_DATA_BYTE + LENGTH_SPI_PADDING_BYTE;
 
 	for(int i=0; i<ENDOF_BNT_REGISTERS; i++) {
-		access->addr = HEADER_SECOND(i);
+		access->addr = HEADER_SECOND(chipid, i);
 		bnt_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
 		*(unsigned short*)(buf+(i<<1)) = *(unsigned short*)rxbuf;
 	}
@@ -132,7 +132,7 @@ regscan(
 
 	for(int chipid=0; chipid<MAX_NCHIPS_PER_BOARD; chipid += idstep) {
 		access->cmdid = HEADER_FIRST(CMD_READ, CMD_UNICAST, chipid);
-		access->addr = HEADER_SECOND(addr);
+		access->addr = HEADER_SECOND(chipid, addr);
 		access->length = HEADER_THIRD(1);
 
 		bnt_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
@@ -164,6 +164,27 @@ bnt_write_all(
 				);
 	}
 }
+	
+void
+bnt_write_board(
+		int regaddr,
+		void* buf,
+		int wrbytes,
+		int boardid,
+		T_BntHandle* handle
+		)
+{
+	if(handle->spifd[boardid] <= 0) return;
+	regwrite(
+			handle->spifd[boardid],
+			0,
+			regaddr,
+			buf,
+			wrbytes,
+			(int)true,
+			false
+			);
+}
 
 int
 bnt_request_hash( 
@@ -178,14 +199,6 @@ bnt_request_hash(
 	hvrs.workid = hash->workid;
 	memcpy(hvrs.midstate, hash->midstate, 32);
 	memcpy(&hvrs.merkle, &hash->bh.merkle[28], 12);
-
-#ifdef DEBUG
-//	bnt_hex2str((unsigned char*)&hvrs, SIZE_TOTAL_HVR_BYTE, hvrs.strout);
-//	BNT_INFO(("%s: HVR : %s\n", __func__, hvrs.strout));
-#endif
-
-	//TODO: temporary
-//	bnt_pop_fifo(0, 0, true, handle);
 
 	bnt_write_all(
 			HVR0, 
@@ -230,7 +243,7 @@ bnt_softreset(
 
 	regwrite(fd, chipid, regaddr, &set, wrbytes, broadcast, false);
 
-	usleep(100000); //100ms TODO: check the exact value
+	usleep(10000); //10ms TODO: check the exact value
 	//sleep(1);
 
 	//release
@@ -316,62 +329,42 @@ bnt_set_interrupt(
 	return 0;
 }
 
-unsigned char 
+unsigned short 
 bnt_get_nonce_mask(
 		int nboards,
 		int nchips
 		)
 {
-	static const unsigned char BNT_CONF_MASK[MAX_NBOARDS][MAX_NCHIPS_PER_BOARD] = {
-		[0][0] = 0,
-		[0][1] = 0x20,
-		[0][3] = 0x30,
-		[0][7] = 0x38,
-		[0][15] = 0x3C,
-		[0][31] = 0x3E,
-		[0][63] = 0x3F,
-		[1][0] = 0x40,
-		[1][1] = 0x60,
-		[1][3] = 0x70,
-		[1][7] = 0x78,
-		[1][15] = 0x7C,
-		[1][31] = 0x7E,
-		[1][63] = 0x7F,
-		[3][0] = 0xC0,
-		[3][1] = 0xE0,
-		[3][3] = 0xF0,
-		[3][7] = 0xF8,
-		[3][15] = 0xFC,
-		[3][31] = 0xFE,
-		[3][63] = 0xFF,
+	static const unsigned char CHIP_MASK[MAX_NCHIPS_PER_BOARD] = {
+		[0] = 0,
+		[1] = 0x80,
+		[3] = 0xC0,
+		[7] = 0xE0,
+		[15] = 0xF0,
+		[31] = 0xF8,
+		[63] = 0xFC,
+		[127] = 0xFE,
+		[255] = 0xFF,
 	};
+
+	unsigned short bmask = 0;
 
 	BNT_CHECK_TRUE(nboards <= MAX_NBOARDS, 0);
 	BNT_CHECK_TRUE(nchips <= MAX_NCHIPS_PER_BOARD, 0);
 
-	return BNT_CONF_MASK[nboards-1][nchips-1];
+	bmask = (nboards-1) << BITS_CHIPID;
+
+	return bmask | CHIP_MASK[nchips-1];
 }
 
 unsigned short 
 bnt_get_nchips(
-		unsigned char mask
+		unsigned short mask
 		)
 {
-	static const unsigned short BNT_TOTAL_CHIPS_FROM_MASK[256] = {
+	static const unsigned short NCHIPS_FROM_MASK[256] = {
 		[0] = 1,
-		[0x20] = 2,
-		[0x30] = 4,
-		[0x38] = 8,
-		[0x3C] = 16,
-		[0x3E] = 32,
-		[0x3F] = 64,
-		[0x40] = 2,
-		[0x60] = 4,
-		[0x70] = 8,
-		[0x78] = 16,
-		[0x7C] = 32,
-		[0x7E] = 64,
-		[0x7F] = 128,
+		[0x80] = 2,
 		[0xC0] = 4,
 		[0xE0] = 8,
 		[0xF0] = 16,
@@ -381,7 +374,10 @@ bnt_get_nchips(
 		[0xFF] = 256,
 	};
 
-	return BNT_TOTAL_CHIPS_FROM_MASK[mask];
+	unsigned short chipmask = mask & (MAX_NCHIPS_PER_BOARD - 1);
+	unsigned short boardmask = mask & ((MAX_NBOARDS - 1) << BITS_CHIPID);
+
+	return NCHIPS_FROM_MASK[chipmask] * (boardmask + 1);
 }
 
 //get chipid shift according to nChips
@@ -390,13 +386,19 @@ bnt_get_id_shift(
 		int nchips
 		)
 {
-	return 
-		nchips == 1 ? 0 : // theoretically 6 but no meaning
-		nchips == 2 ? 5 :
-		nchips == 4 ? 4 :
-		nchips == 8 ? 3 :
-		nchips == 16 ? 2 :
-		nchips == 32 ? 1 : 0;
+	static const unsigned short BITS[256] = {
+		[0] = 0,
+		[1] = BITS_CHIPID-1,
+		[3] = BITS_CHIPID-2,
+		[7] = BITS_CHIPID-3,
+		[15] = BITS_CHIPID-4,
+		[31] = BITS_CHIPID-5,
+		[63] = BITS_CHIPID-6,
+		[127] = BITS_CHIPID-7,
+		[255] = BITS_CHIPID-8,
+	};
+
+	return BITS[nchips-1];
 }
 
 int
@@ -717,14 +719,8 @@ bnt_devscan(
 
 		for(chip=0; chip<MAX_NCHIPS_PER_BOARD; chip++) {
 			if(hello_there(spifd[board], chip, true)) {
-//				putchar('O');
 				chipcount[board]++;
 			}
-			else {
-//				putchar('.');
-			}
-
-//			if(chip % 8 == 7) putchar(' ');
 		}
 
 		_nboard++;
@@ -743,70 +739,56 @@ bnt_devscan(
 
 	puts("");
 
-	/*
-	for(board=*nboards; board>1; board--) {
-		printf("%s: board %d chip count %d\n", __func__, board-1, chipcount[board-1]);
-		if(chipcount[board-1] != chipcount[board-2]) {
-			printf("Error! Wrong Configuration. Board %d/%d Chip count %d vs %d\n",
-					board-1, board-2, chipcount[board-1], chipcount[board-2]);
-			return -1;
-		}
-	}
-	*/
-
 	return 0;
 }
 
 unsigned int
 bnt_get_realnonce(
 		unsigned int mrr,
-		unsigned char mask
+		unsigned short mask
 		)
 {
 	//TODO:
 	//TODO: Needs to be updated when ASIC spec is fixed...........
-	//TODO: Now written as 64 Blocks / chip
+	//TODO: Now written as 16 Blocks / chip
 	//TODO:
-	unsigned char offset;
+	static const unsigned char offset = 2;
 	unsigned int nonce;
-	static const unsigned int window[256] = {
-		//refer to "nonce compensation by S/W" slide
+
+	static const unsigned int window_unit[256] = {
 #ifdef FPGA
 		//8 Engines
-		[0] = 0xFFFFFFF8,
-		[0x30] = 0x3FFFFFF8,
-		[0x70] = 0x1FFFFFF8,
-		[0xF0] = 0x0FFFFFF8,
+		[0x00] = 0xFFFFFFFF,
+		[0xC0] = 0x3FFFFFFF,
 #else
-		[0] = 0xFFFFF000,
-		[0x30] = 0x3FFFF000,
-		[0x70] = 0x1FFFF000,
-		[0xF0] = 0x0FFFF000,
+		[0x00] = 0xFFFFFFFF,
+		[0x80] = 0x7FFFFFFF,
+		[0xC0] = 0x3FFFFFFF,
+		[0xE0] = 0x1FFFFFFF,
+		[0xF0] = 0x0FFFFFFF,
+		[0xF8] = 0x07FFFFFF,
+		[0xFC] = 0x03FFFFFF,
+		[0xFE] = 0x01FFFFFF,
+		[0xFF] = 0x00FFFFFF,
 #endif
-		[0x20] = 0x7FFFF000,
-		[0x38] = 0x1FFFF000,
-		[0x3C] = 0x0FFFF000,
-		[0x3E] = 0x07FFF000,
-		[0x3F] = 0x03FFF000,
-		[0x40] = 0x7FFFF000,
-		[0x60] = 0x3FFFF000,
-		[0x78] = 0x0FFFF000,
-		[0x7C] = 0x07FFF000,
-		[0x7E] = 0x03FFF000,
-		[0x7F] = 0x01FFF000,
-		[0xC0] = 0x3FFFF000,
-		[0xE0] = 0x1FFFF000,
-		[0xF8] = 0x07FFF000,
-		[0xFC] = 0x03FFF000,
-		[0xFE] = 0x01FFF000,
-		[0xFF] = 0x00FFF000,
 	};
 
-	offset = ((unsigned char)(mrr & (~window[mask])) >> 1) ? 2 : 3;
-	nonce = (mrr & window[mask]) >> SHIFT_INTERNAL_HASH_ENGINES;
+	unsigned int window = 0;
+	unsigned char boardmask = mask >> BITS_CHIPID;
+
+	window = window_unit[(unsigned char)mask];
+	window >>= 
+		(boardmask == 3) ? 2 :
+		(boardmask == 1) ? 1 : 0;
+
+	window &= (~(N_INTERNAL_HASH_ENGINES-1));
+	
+	printf("%s: window %08X\n", __func__, window);
+
+	nonce = (mrr & window) >> SHIFT_INTERNAL_HASH_ENGINES;
 	nonce -= offset; 
 	nonce <<= SHIFT_INTERNAL_HASH_ENGINES;
-	nonce = (mrr & (~(window[mask]))) | (nonce & window[mask]);
+	nonce = (mrr & (~window)) | (nonce & window);
 
 	return nonce; 
 }
