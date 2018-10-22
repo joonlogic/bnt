@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
 
 	//set board/chip range
 	int cs_start, cs_end, csidx;
-	int chipid_start, chipid_end, chipid_step;
+	int chipid_start, chipid_end;
 
 	cs_start = info.isall ? 0 : info.boardid;
 	cs_end = info.isall ? MAX_SPI_CS : info.boardid;
@@ -173,9 +173,7 @@ int main(int argc, char *argv[])
 		info.isnchips ? 0 : info.chipid;
 	chipid_end = 
 		info.isall ? MAX_CHIPID :
-		info.isnchips ? LAST_CHIPID(info.nchips) : info.chipid;
-
-	chipid_step = info.isnchips ? 1 << bnt_get_id_shift(info.nchips) : 1;
+		info.isnchips ? info.nchips : info.chipid;
 
     //loop
 	unsigned char pattern[] = {0xFF, 0x00, 0xA5, 0x5A};
@@ -197,7 +195,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		for(int chipid=chipid_start; chipid<=chipid_end; chipid += chipid_step) {
+		for(int chipid=chipid_start; chipid<=chipid_end; chipid++) {
 			if(hello_there(fd, chipid, false) == false) continue;
 
 			bnt_softreset(fd, chipid, false);

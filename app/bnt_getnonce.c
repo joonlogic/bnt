@@ -156,7 +156,6 @@ bnt_init(
 #ifndef DEMO
 	BNT_INFO(("MASK %04X\n", handle->mask));
 #endif
-	handle->idshift = bnt_get_id_shift(handle->nchips);
 	handle->ssr = handle->mask << I_SSR_MASK;
 	
 #if 0
@@ -197,8 +196,7 @@ bnt_init(
 	for(int board=0; board<MAX_NBOARDS; board++) {
 		if(handle->spifd[board] <= 0) continue;
 		unsigned short ssr_wr = handle->ssr | (board << I_SSR_BOARDID);
-		int chipid_step = 1 << bnt_get_id_shift(handle->nchips);
-		for(int chip=0; chip<MAX_NCHIPS_PER_BOARD; chip+=chipid_step) {
+		for(int chip=0; chip<handle->nchips; chip++) {
 			regread(
 					handle->spifd[board], 
 					chip,

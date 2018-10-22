@@ -108,8 +108,6 @@
 #define SHIFT_INTERNAL_HASH_ENGINES        10     //16 + 64
 #endif
 
-#define LAST_CHIPID(NCHIPS)                (MAX_NCHIPS_PER_BOARD - (MAX_NCHIPS_PER_BOARD/(NCHIPS)))
-
 /////
 ///// BNT registers
 /////
@@ -156,7 +154,7 @@ typedef enum {
 //V_ means valid size for the field
 #define MASKFOR_LENGTH(LEN)                 ((1<<(LEN))-1)
 
-#define IDR_SIGNATURE                       0xD5 //427
+#define IDR_SIGNATURE                       0xAB //427
 #define I_IDR_CHIPID                        0
 #define V_IDR_CHIPID                        8
 #define I_IDR_SIGNATURE                     8

@@ -39,7 +39,7 @@ regwrite(
 	T_BntAccess* access = (T_BntAccess*)txbuf;
 	int ret = 0;
 
-	access->cmdid = HEADER_FIRST(CMD_WRITE, isbcast, isbcast ? 0x3F : chipid);
+	access->cmdid = HEADER_FIRST(CMD_WRITE, isbcast, isbcast ? 0xFF : chipid);
 	access->addr = HEADER_SECOND(isbcast ? 0x03 : chipid, regaddr);
 	access->length = HEADER_THIRD(wrbytes);
 	memcpy(access->data, buf, wrbytes);
@@ -86,7 +86,8 @@ int
 regdump(
 		int fd,
 		int chipid,
-		void* buf
+		void* buf,
+		bool verbose
 		)
 {
 	BNT_CHECK_NULL(buf, -1);
@@ -104,7 +105,7 @@ regdump(
 
 	for(int i=0; i<ENDOF_BNT_REGISTERS; i++) {
 		access->addr = HEADER_SECOND(chipid, i);
-		bnt_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
+		bnt_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, verbose); 
 		*(unsigned short*)(buf+(i<<1)) = *(unsigned short*)rxbuf;
 	}
 
@@ -126,11 +127,8 @@ regscan(
 	T_BntAccess* access = (T_BntAccess*)txbuf;
 	int txlen = LENGTH_SPI_MSG(0);
 	int rxlen = SIZE_REG_DATA_BYTE + LENGTH_SPI_PADDING_BYTE;
-	int idstep = 0;
 
-	idstep = 1 << bnt_get_id_shift(nchips);
-
-	for(int chipid=0; chipid<MAX_NCHIPS_PER_BOARD; chipid += idstep) {
+	for(int chipid=0; chipid<nchips; chipid ++) {
 		access->cmdid = HEADER_FIRST(CMD_READ, CMD_UNICAST, chipid);
 		access->addr = HEADER_SECOND(chipid, addr);
 		access->length = HEADER_THIRD(1);
@@ -381,6 +379,7 @@ bnt_get_nchips(
 }
 
 //get chipid shift according to nChips
+//deprecated according to id sequence change
 int 
 bnt_get_id_shift(
 		int nchips
@@ -633,12 +632,11 @@ bnt_getnonce(
 	T_BntHashMRR mrr={0,};
 	bool isvalid;
 	int count = 0;
-	int idstep = 1 << bnt_get_id_shift(handle->nchips);
 	do {
 		//check works from Engines
 		for(int board=0; board<MAX_NBOARDS; board++) {
 			if(handle->spifd[board] <= 0) continue;
-			for(int chip=0; chip<MAX_NCHIPS_PER_BOARD; chip+=idstep) {
+			for(int chip=0; chip<handle->nchips; chip++) {
 				bnt_read_workid(
 						handle->spifd[board],
 						chip,

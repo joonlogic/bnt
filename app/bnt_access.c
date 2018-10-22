@@ -204,12 +204,12 @@ int main(int argc, char *argv[])
 
 		nbytes = info.count << 1;
 
-		ret = info.isdump ? regdump(fd, info.chipid, info.buf) :
+		ret = info.isdump ? regdump(fd, info.chipid, info.buf, info.verbose) :
 			  info.isregscan ? regscan(fd, info.addr, info.buf, info.nchips) :
 			  info.iswrite ? \
 				  regwrite(fd, info.chipid, info.addr, info.buf, 
-						  nbytes, info.isbcast, false) :
-				  regread(fd, info.chipid, info.addr, info.buf, nbytes, false);
+						  nbytes, info.isbcast, info.verbose) :
+				  regread(fd, info.chipid, info.addr, info.buf, nbytes, info.verbose);
 
 		printf("[BNT REG %s] Board %d Chip %d %s\n", 
 				info.isregscan ? "REGISTER SCAN" :
