@@ -39,12 +39,21 @@ int main()
         "edb00018"      // bits
         "ffdfd257";
 #else
-	char* sin = "01000000" //version
+	char* sin0 = "01000000" //version
 		"0000000000000000000000000000000000000000000000000000000000000000" //prev hash
 		"3ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a" //merkle
 		"29ab5f49" 
 		"ffff001d" 
 		"1dac2b7c"; 
+#endif
+
+#if 1
+	char* sin = "01000000"
+		"dc79a6581c26dc78968b499c96dc2527869e3534e088444bf94d000000000000"
+		"50add7b80e07307ceedaa4d98f8057e035368419776be0f1aab9fb11dfb11b27"
+		"c8c7cb4d"
+		"b3936a1a"
+		"15532645"; //BH 123455
 #endif
 
 	unsigned char hashout[SHA256_DIGEST_LENGTH]={0,};

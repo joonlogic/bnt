@@ -92,9 +92,10 @@ int main(int argc, char *argv[])
 	mask = ntohs(mask);
 	mask >>= I_SSR_MASK; 
 
-	printf("MASK       : %02X\n", mask);
+	printf("MASK       : %03X\n", mask);
 	realnonce = bnt_get_realnonce(mrr.nonceout, (unsigned char)mask);
 
+	printf("WORK ID    : %02X + %02X\n", mrr.extraid, mrr.workid);
 	printf("OUT NONCE  : %08X\n", mrr.nonceout);
 	printf("REAL NONCE : %08X\n", realnonce);
 

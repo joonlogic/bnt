@@ -101,10 +101,12 @@
 	((ID_LOGICAL) << (HANDLE)->idshift)       
 
 #ifdef FPGA
+#define N_INTERNAL_HASH_BLOCKS             1
 #define N_INTERNAL_HASH_ENGINES            8
 #define SHIFT_INTERNAL_HASH_ENGINES        3
 #else
-#define N_INTERNAL_HASH_ENGINES            1024
+#define N_INTERNAL_HASH_BLOCKS             16
+#define N_INTERNAL_HASH_ENGINES            64
 #define SHIFT_INTERNAL_HASH_ENGINES        10     //16 + 64
 #endif
 
@@ -215,7 +217,11 @@ typedef enum {
 #define SIZE_BNT_HASH_TUPLE_CORE            44 // Byte = midstate + ...
 #define COUNT_BNT_HASH_TUPLE                23 // Short
 
-#define THRESHOLD_GET_NONCE_COUNT           700 // 
+#ifdef FPGA
+#define THRESHOLD_GET_NONCE_COUNT           1200 // 
+#else
+#define THRESHOLD_GET_NONCE_COUNT           1200 //TODO: TBD
+#endif
 
 typedef struct bnt_spi_header {
 	unsigned char  cmdid;
@@ -230,7 +236,9 @@ typedef struct {
     int            idshift;
     int            spifd[MAX_NBOARDS];
     int            gpiofd[MAX_NBOARDS];
-    int            nonce_mode;
+    int            mode64;
+	int            ntroll;
+	int            ntrollplus;
     unsigned short ssr;
     unsigned short mask;
     FILE*          bhfp;

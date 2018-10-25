@@ -4,14 +4,15 @@ INSTALL_PATH=/bnt
 CC = gcc -g
 
 TARGET =  bnt_access
-TARGET += spidev_test
 TARGET += bnt_gpioint
 TARGET += bnt_getnonce
 TARGET += bnt_gethash
 TARGET += bnt_reset
+TARGET += bnt_chktime
 TARGET += bnt_devscan
 TARGET += bnt_readnonce
 TARGET += bnt_devtest
+#TARGET += spidev_test
 
 ifeq ($(BNT_LIBDIR),)
     BNT_LIBDIR = ../api
@@ -43,6 +44,9 @@ bnt_getnonce: bnt_getnonce.c $(BNT_LIB)
 	$(CC) -Wall $(CFLAGS) $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
 
 bnt_gethash: bnt_gethash.c $(BNT_LIB)
+	$(CC) -Wall $(CFLAGS) $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
+
+bnt_chktime: bnt_chktime.c $(BNT_LIB)
 	$(CC) -Wall $(CFLAGS) $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
 
 bnt_reset: bnt_reset.c $(BNT_LIB)

@@ -241,7 +241,7 @@ bnt_softreset(
 
 	regwrite(fd, chipid, regaddr, &set, wrbytes, broadcast, false);
 
-	usleep(10000); //10ms TODO: check the exact value
+	usleep(100000); //100ms TODO: check the exact value
 	//sleep(1);
 
 	//release
@@ -287,6 +287,27 @@ bnt_pop_fifo(
 	return 0;
 }
 
+int
+bnt_set_boardid(
+		int fd,
+		int boardid
+		)
+{
+	unsigned short ssr;
+
+	BNT_CHECK_TRUE(fd>0, -1);
+
+	regread(fd, 0, SSR, &ssr, sizeof(ssr), false);
+	ssr = ntohs(ssr);
+	ssr &= (((1 << V_SSR_BOARDID) - 1) << I_SSR_BOARDID);
+	ssr |= (boardid & ((1 << V_SSR_BOARDID) - 1)) << I_SSR_BOARDID;
+	ssr = htons(ssr);
+
+	regwrite(fd, 0, SSR, &ssr, sizeof(ssr), true, false);
+
+	return 0;
+}
+	
 int
 bnt_set_interrupt(
 		int fd,
@@ -433,11 +454,13 @@ int
 bnt_read_workid(
 		int fd,
 		int chipid,
+		unsigned char* extraid,
 		unsigned char* workid
 		)
 {
 	unsigned short mrr0;
 	regread(fd, chipid, MRR0, &mrr0, sizeof(mrr0), false);
+	*extraid = (unsigned char)(ntohs(mrr0) >> I_MRR0_EXTRA_HASHID);
 	*workid = (unsigned char)ntohs(mrr0);
 	return 0;
 }
@@ -496,6 +519,8 @@ bnt_test_validnonce_out(
 		int chip
 		)
 {
+	T_BlockHeader* bhp;
+
 	//check work id
 	if(bhash->workid != mrr->workid) {
 		BNT_INFO(("%s: mismatch workid. bhash->workid %02X vs mrr->workid %02X\n",
@@ -507,11 +532,25 @@ bnt_test_validnonce_out(
 	unsigned int realnonce = 0;
 	realnonce = bnt_get_realnonce(mrr->nonceout, handle->mask);
 
-	BNT_INFO(("\n[%d][%02d] FOUND : NONCE %08X\n", board, chip, realnonce));
+	BNT_INFO(("\n[%d][%02d] FOUND : NONCE %08X (MRR was %08X)\n", board, chip, realnonce, mrr->nonceout));
 	bhash->bh.nonce = ntohl(realnonce);
 
+	//consider ntime roll
+	if(handle->ntroll) {
+		T_BlockHeader bh;
+		memcpy(&bh, &bhash->bh, sizeof(bh));
+		bh.ntime += mrr->extraid;
+		bhp = &bh;
+	}
+	else {
+		bhp = &bhash->bh;
+	}
+
+	BNT_INFO(("Hashed Block Header -----\n"));
+	printout_bh(bhp);
+
 	unsigned char hashout[32] = {0,};
-	bnt_gethash((unsigned char*)&bhash->bh, sizeof(bhash->bh), hashout);
+	bnt_gethash((unsigned char*)bhp, sizeof(bhash->bh), hashout);
 	bnt_gethash(hashout, sizeof(hashout), hashout);
 
 	unsigned char hashoutswap[32] = {0,};
@@ -632,6 +671,9 @@ bnt_getnonce(
 	T_BntHashMRR mrr={0,};
 	bool isvalid;
 	int count = 0;
+	int timeout = (THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1));
+	timeout <<= handle->ntroll;
+
 	do {
 		//check works from Engines
 		for(int board=0; board<MAX_NBOARDS; board++) {
@@ -640,6 +682,7 @@ bnt_getnonce(
 				bnt_read_workid(
 						handle->spifd[board],
 						chip,
+						&mrr.extraid,
 						&mrr.workid
 						);
 
@@ -652,6 +695,8 @@ bnt_getnonce(
 						chip,
 						&mrr
 						);
+
+				printf("mrr.workid %d mrr.extraid %d\n", mrr.workid, mrr.extraid);
 
 #ifdef DEMO
 				isvalid = bnt_test_validnonce(bhash, &mrr, handle, board, chip);
@@ -683,10 +728,23 @@ bnt_getnonce(
 #else
 		sleep(1);
 		if(count%20 == 0) BNT_PRINT(("waiting count %d\n", count));
-	} while(count++ < (THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1)));
+	} while(count++ < timeout);
 #endif
 
 	BNT_PRINT(("Timedout. Waiting Count %d\n", count));
+
+	//debug
+	char debugbuf[516] = {0,};
+	for(int board=0; board<MAX_NBOARDS; board++) {
+		if(handle->spifd[board] <= 0) continue;
+		for(int chip=0; chip<handle->nchips; chip++) {
+			regdump(handle->spifd[board], chip, debugbuf, false);
+			printf("[BNT REG %s] Board %d Chip %d %s\n",
+								 "READ", board, chip, "");  
+			printreg(debugbuf, ENDOF_BNT_REGISTERS, 0x00);
+		}
+	}
+	
 	return -1;
 }
 
@@ -750,7 +808,7 @@ bnt_get_realnonce(
 	//TODO: Needs to be updated when ASIC spec is fixed...........
 	//TODO: Now written as 16 Blocks / chip
 	//TODO:
-	static const unsigned char offset = 2;
+	unsigned char offset = 2;
 	unsigned int nonce;
 
 	static const unsigned int window_unit[256] = {
@@ -774,6 +832,7 @@ bnt_get_realnonce(
 	unsigned int window = 0;
 	unsigned char boardmask = mask >> BITS_CHIPID;
 
+	offset = ((mrr & (N_INTERNAL_HASH_ENGINES-1)) >> 1) ? 2 : 3;
 	window = window_unit[(unsigned char)mask];
 	window >>= 
 		(boardmask == 3) ? 2 :
@@ -781,8 +840,6 @@ bnt_get_realnonce(
 
 	window &= (~(N_INTERNAL_HASH_ENGINES-1));
 	
-	printf("%s: window %08X\n", __func__, window);
-
 	nonce = (mrr & window) >> SHIFT_INTERNAL_HASH_ENGINES;
 	nonce -= offset; 
 	nonce <<= SHIFT_INTERNAL_HASH_ENGINES;

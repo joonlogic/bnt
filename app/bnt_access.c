@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
 	int fd;
 	int nbytes = 0;
 	int cs_start, cs_end;
-	unsigned char buf[512]={0,};
+	unsigned char buf[516]={0,};
 	T_AccessInfo info = {
 		.count = 1,
 		.buf = buf,
@@ -215,7 +215,7 @@ int main(int argc, char *argv[])
 				info.isregscan ? "REGISTER SCAN" :
 					info.iswrite ? "WRITE" : "READ", csidx, info.chipid, 
 				info.iswrite ? info.isbcast ? "Broadcast" : "" : 
-					info.isregscan ? "~ 64" : "");
+					info.isregscan ? "~ 255" : "");
 
 		info.isdump ? \
 			printreg(info.buf, ENDOF_BNT_REGISTERS, 0x00) :

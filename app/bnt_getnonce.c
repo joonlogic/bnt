@@ -29,6 +29,7 @@
 typedef struct {
 	int            nboards;
 	int            nchips;
+	int            ntime;
 	char*          infile;
 	char*          outfile;
 	bool           fast;
@@ -42,6 +43,7 @@ static void print_usage(const char *prog)
 	puts("  -b --nboards  number of boards in system. Range(1~4)\n"
 	     "  -c --nchips   number of chips per board. Range(1~64)\n"
 	     "  -f --fast     fast mode (high speed clock)\n"
+	     "  -t --ntime    ntime rolling offset(1,2,3)\n"
 	     "  -r --read     input block header sample file\n"
 	     "  -w --write    write log to file (NYI)\n");
 	exit(1);
@@ -53,6 +55,7 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 		static const struct option lopts[] = {
 			{ "nboards", 1, 0, 'b' },
 			{ "nchips",  1, 0, 'c' },
+			{ "ntime",   0, 0, 't' },
 			{ "auto",    0, 0, 'a' },
 			{ "fast",    0, 0, 'f' },
 			{ "help",    0, 0, 'h' },
@@ -62,7 +65,7 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 		};
 		int c;
 
-		c = getopt_long(argc, argv, "b:c:r:w:fah", lopts, NULL);
+		c = getopt_long(argc, argv, "b:c:r:w:t:fah", lopts, NULL);
 
 		if (c == -1)
 			break;
@@ -75,6 +78,9 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 			case 'c':
 				info->nchips = atoi(optarg);
 				info->autodetect = false;
+				break;
+			case 't':
+				info->ntime = atoi(optarg);
 				break;
 			case 'a':
 				info->autodetect = true;
@@ -123,6 +129,19 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 			break;
 	}
 
+	switch(info->ntime) {
+		case 0:
+		case 1:
+		case 2:
+		case 3:
+			break;
+		default:
+			printf("Out of range ntime roll %d\n", info->ntime);
+			print_usage(argv[0]);
+			break;
+	}
+
+
 	if(!strlen(info->infile)) {
 		printf("Missing input filename\n");
 		print_usage(argv[0]);
@@ -154,7 +173,7 @@ bnt_init(
 	//set Mask
 	handle->mask = bnt_get_nonce_mask(handle->nboards, handle->nchips);
 #ifndef DEMO
-	BNT_INFO(("MASK %04X\n", handle->mask));
+	BNT_INFO(("MASK %03X\n", handle->mask));
 #endif
 	handle->ssr = handle->mask << I_SSR_MASK;
 	
@@ -164,10 +183,12 @@ bnt_init(
 #endif
 
 	unsigned short ssr = 0;
+	unsigned short tsr = 0;
 
 	for(int i=0; i<MAX_NBOARDS; i++) {
 		if(handle->spifd[i] <= 0) continue;
 
+		//SSR
 		ssr = htons(handle->ssr | (i << I_SSR_BOARDID));
 		bnt_write_board(
 				SSR, 
@@ -176,6 +197,17 @@ bnt_init(
 				i,
 				handle
 				);
+
+		//TSR
+		tsr = htons(info->ntime);
+		bnt_write_board(
+				TSR,
+				&tsr,
+				sizeof(tsr),
+				i,
+				handle
+				);
+
 	}
 
 #ifdef FPGA
@@ -255,7 +287,7 @@ int main(int argc, char *argv[])
 		.nchips = 0,
 		.infile = infile,
 		.outfile = outfile,
-		.autodetect = true
+		.autodetect = true,
 	};
 
 #ifdef DEMO
@@ -285,6 +317,7 @@ int main(int argc, char *argv[])
 	T_BntHandle handle = {
 		.nboards = info.nboards,
 		.nchips = info.nchips,
+		.ntroll = info.ntime,
 	};
 
 
@@ -306,7 +339,7 @@ int main(int argc, char *argv[])
 	}
 
 	handle.mask = bnt_get_nonce_mask(handle.nboards, handle.nchips);
-	BNT_INFO(("NONCE MASK %04X\n", handle.mask));
+	BNT_INFO(("NONCE MASK %03X\n", handle.mask));
 	printf("\t--> Press any key to continue...");
 #ifdef DEMO
 	ConsoleInitialize();
@@ -345,6 +378,10 @@ int main(int argc, char *argv[])
 		ret = bnt_get_midstate(&bhash);
 		BNT_CHECK_RESULT(ret, -1);
 		
+		if(info.ntime) {
+			bhash.bh.ntime -= ((1<<info.ntime) - 1);
+			printf("%s: bhash.bh.ntime %08X, info.ntime %d\n", __func__, bhash.bh.ntime, info.ntime);
+		}
 		bhash.workid++ == 0xFF ? bhash.workid++ : bhash.workid;
 
 #ifdef DEMO
