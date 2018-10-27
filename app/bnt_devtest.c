@@ -107,7 +107,7 @@ void regreadHVR(
 	}
 	*/
 	for(int i=0; i<SIZE_TOTAL_HVR_BYTE/SIZE_REG_DATA_BYTE; i++, rbuf+=(SIZE_REG_DATA_BYTE*1)) {
-		regread(fd, chipid, HVR0+i, rbuf, SIZE_REG_DATA_BYTE*1, false);
+		regread(fd, chipid, HVR0+i, rbuf, SIZE_REG_DATA_BYTE*1, false, false);
 	}
 } 
 

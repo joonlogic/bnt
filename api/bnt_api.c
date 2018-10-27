@@ -55,6 +55,7 @@ regread(
 		int regaddr,
 		void* buf,
 		int rdbytes,
+		bool isbcast,
 		bool verbose
 		)
 {
@@ -67,8 +68,8 @@ regread(
 	int rxlen = 0;
 	int ret = 0;
 
-	access->cmdid = HEADER_FIRST(CMD_READ, CMD_UNICAST, chipid);
-	access->addr = HEADER_SECOND(chipid, regaddr);
+	access->cmdid = HEADER_FIRST(CMD_READ, isbcast, isbcast ? 0xFF : chipid);
+	access->addr = HEADER_SECOND(isbcast ? 0x03 : chipid, regaddr);
 	access->length = HEADER_THIRD(rdbytes);
 
 	txlen = LENGTH_SPI_MSG(0);
@@ -128,7 +129,7 @@ regscan(
 	int txlen = LENGTH_SPI_MSG(0);
 	int rxlen = SIZE_REG_DATA_BYTE + LENGTH_SPI_PADDING_BYTE;
 
-	for(int chipid=0; chipid<nchips; chipid ++) {
+	for(int chipid=0; chipid<nchips; chipid++) {
 		access->cmdid = HEADER_FIRST(CMD_READ, CMD_UNICAST, chipid);
 		access->addr = HEADER_SECOND(chipid, addr);
 		access->length = HEADER_THIRD(1);
@@ -136,6 +137,27 @@ regscan(
 		bnt_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
 		*(unsigned short*)(buf+(chipid<<1)) = *(unsigned short*)rxbuf;
 	}
+
+	return 0;
+}
+
+int 
+regmcast(
+		int fd,
+		bool* mined,
+		bool* unique,
+		unsigned char* chipid,
+		bool verbose
+		)
+{
+	unsigned short mine;
+	unsigned char* regp;
+	regread(fd, 0xFF, MRR1, &mine, sizeof(mine), true, verbose);
+
+	regp = (unsigned char*)&mine;
+	*chipid = *regp;
+	*mined = (regp[0] | regp[1]) ? true : false; 
+	*unique = ((regp[0] ^ regp[1]) == 0xFF) ? true : false; 
 
 	return 0;
 }
@@ -216,7 +238,7 @@ hello_there(
 		)
 {
 	unsigned short idr = 0;
-	regread(fd, chipid, IDR, &idr, SIZE_REG_DATA_BYTE, false);
+	regread(fd, chipid, IDR, &idr, SIZE_REG_DATA_BYTE, false, false);
 
 	idr = ntohs(idr);
 	if(verbose) {
@@ -263,7 +285,7 @@ bnt_pop_fifo(
 	unsigned short set = 0;
 	unsigned short unset = 0;
 
-	regread(handle->spifd[0], 0, IER, &ier, sizeof(ier), false);
+	regread(handle->spifd[0], 0, IER, &ier, sizeof(ier), false, false);
 	ier = ntohs(ier);
 
 	unset = htons(ier & (~(1 << I_IER_MINED)));
@@ -297,7 +319,7 @@ bnt_set_boardid(
 
 	BNT_CHECK_TRUE(fd>0, -1);
 
-	regread(fd, 0, SSR, &ssr, sizeof(ssr), false);
+	regread(fd, 0, SSR, &ssr, sizeof(ssr), false, false);
 	ssr = ntohs(ssr);
 	ssr &= (((1 << V_SSR_BOARDID) - 1) << I_SSR_BOARDID);
 	ssr |= (boardid & ((1 << V_SSR_BOARDID) - 1)) << I_SSR_BOARDID;
@@ -325,7 +347,7 @@ bnt_set_interrupt(
 	unsigned short ier;
 
 	if(fd > 0) {
-		regread(fd, 0, IER, &ier, sizeof(ier), false);
+		regread(fd, 0, IER, &ier, sizeof(ier), false, false);
 		ier = ntohs(ier);
 		ier = htons(enable ? ier | ikind : ier & (~ikind));
 
@@ -337,7 +359,7 @@ bnt_set_interrupt(
 
 			fd = handle->spifd[i];
 
-			regread(fd, 0, IER, &ier, sizeof(ier), false);
+			regread(fd, 0, IER, &ier, sizeof(ier), false, false);
 			ier = ntohs(ier);
 			ier = htons(enable ? ier | ikind : ier & (~ikind));
 
@@ -394,7 +416,7 @@ bnt_get_nchips(
 	};
 
 	unsigned short chipmask = mask & (MAX_NCHIPS_PER_BOARD - 1);
-	unsigned short boardmask = mask & ((MAX_NBOARDS - 1) << BITS_CHIPID);
+	unsigned short boardmask = (mask & ((MAX_NBOARDS - 1) << BITS_CHIPID))>>(BITS_CHIPID);
 
 	return NCHIPS_FROM_MASK[chipmask] * (boardmask + 1);
 }
@@ -459,7 +481,7 @@ bnt_read_workid(
 		)
 {
 	unsigned short mrr0;
-	regread(fd, chipid, MRR0, &mrr0, sizeof(mrr0), false);
+	regread(fd, chipid, MRR0, &mrr0, sizeof(mrr0), false, false);
 	*extraid = (unsigned char)(ntohs(mrr0) >> I_MRR0_EXTRA_HASHID);
 	*workid = (unsigned char)ntohs(mrr0);
 	return 0;
@@ -472,7 +494,7 @@ bnt_read_mrr(
 		T_BntHashMRR* mrr
 		)
 {
-	regread(fd, chipid, MRR0, mrr, sizeof(*mrr), false);
+	regread(fd, chipid, MRR0, mrr, sizeof(*mrr), false, false);
 	mrr->nonceout = htonl(mrr->nonceout);
 	return 0;
 }
@@ -536,15 +558,11 @@ bnt_test_validnonce_out(
 	bhash->bh.nonce = ntohl(realnonce);
 
 	//consider ntime roll
-	if(handle->ntroll) {
-		T_BlockHeader bh;
-		memcpy(&bh, &bhash->bh, sizeof(bh));
-		bh.ntime += mrr->extraid;
-		bhp = &bh;
-	}
-	else {
-		bhp = &bhash->bh;
-	}
+	T_BlockHeader bh;
+	int offset = handle->ntrollplus ? (board << handle->ntroll) : 0;
+	memcpy(&bh, &bhash->bh, sizeof(bh));
+	bh.ntime += mrr->extraid + offset;
+	bhp = &bh;
 
 	BNT_INFO(("Hashed Block Header -----\n"));
 	printout_bh(bhp);
@@ -652,7 +670,6 @@ void printout_hash_swap(
 }
 
 
-
 /*
  * Get nonce from Hardware Engines
  * This is useful only for Chip test..
@@ -674,11 +691,13 @@ bnt_getnonce(
 	int timeout = (THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1));
 	timeout <<= handle->ntroll;
 
+	printf("timeout %d from %d\n", timeout, bnt_get_nchips(handle->mask));
 	do {
 		//check works from Engines
 		for(int board=0; board<MAX_NBOARDS; board++) {
 			if(handle->spifd[board] <= 0) continue;
 			for(int chip=0; chip<handle->nchips; chip++) {
+
 				bnt_read_workid(
 						handle->spifd[board],
 						chip,
@@ -709,6 +728,120 @@ bnt_getnonce(
 					return 0;
 				}
 				memset(&mrr, 0x00, sizeof(mrr));
+			}
+		}
+#ifdef DEMO
+		if(Cons_kbhit()) {
+			int ch = Cons_getch();
+			if((ch == 27) || (ch == 'p')) {
+				return ch;
+			}
+		}
+		int localcounter = 0;
+		do {
+			usleep(100000); //100ms
+			BNT_PRINT(("MINING IN PROGRESS : %06d\r", count*10 + localcounter)); 
+			fflush(stdout); 
+		} while(localcounter++<10);
+	} while(count++ < (10*THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1)));
+#else
+		sleep(1);
+		if(count%20 == 0) BNT_PRINT(("waiting count %d\n", count));
+	} while(count++ < timeout);
+#endif
+
+	BNT_PRINT(("Timedout. Waiting Count %d\n", count));
+
+	//debug
+	char debugbuf[516] = {0,};
+	for(int board=0; board<MAX_NBOARDS; board++) {
+		if(handle->spifd[board] <= 0) continue;
+		for(int chip=0; chip<handle->nchips; chip++) {
+			regdump(handle->spifd[board], chip, debugbuf, false);
+			printf("[BNT REG %s] Board %d Chip %d %s\n",
+								 "READ", board, chip, "");  
+			printreg(debugbuf, ENDOF_BNT_REGISTERS, 0x00);
+		}
+	}
+	
+	return -1;
+}
+
+
+/*
+ * Get nonce from Hardware Engines
+ * This is useful only for Chip test..
+ */
+int
+bnt_getnonce2(
+		T_BntHash* bhash,
+		T_BntHandle* handle
+		)
+{
+	//1. Write midstate & block header info to registers 
+	bnt_request_hash(bhash, handle); 
+	usleep(100);
+
+	//2. Wait & Get results
+	T_BntHashMRR mrr={0,};
+	bool isvalid;
+	int count = 0;
+	int timeout = (THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1));
+	timeout <<= handle->ntroll;
+
+	bool ismined;
+	bool isunique;
+	unsigned char minedchip;
+	int chip_s, chip_e;
+
+	printf("timeout %d from %d\n", timeout, bnt_get_nchips(handle->mask));
+	do {
+		//check works from Engines
+		for(int board=0; board<MAX_NBOARDS; board++) {
+			if(handle->spifd[board] <= 0) continue;
+			regmcast(handle->spifd[board], &ismined, &isunique, &minedchip, false);
+			if(ismined) {
+				if(isunique) {
+				   chip_s = minedchip;
+				   chip_e = minedchip;
+				}
+				else {
+				   chip_s = 0;
+				   chip_e = handle->nchips;
+				}
+					   
+				for(int chip=chip_s; chip<chip_e; chip++) {
+					bnt_read_workid(
+						handle->spifd[board],
+						chip,
+						&mrr.extraid,
+						&mrr.workid
+					);
+
+					if(mrr.workid != bhash->workid) {
+						continue; //means NO results
+					}
+
+					bnt_read_mrr(
+						handle->spifd[board],
+						chip,
+						&mrr
+						);
+
+					printf("mrr.workid %d mrr.extraid %d\n", mrr.workid, mrr.extraid);
+
+#ifdef DEMO
+					isvalid = bnt_test_validnonce(bhash, &mrr, handle, board, chip);
+#else
+					isvalid = bnt_test_validnonce_out(bhash, &mrr, handle, board, chip);
+#endif
+					if(isvalid) {
+						//found it
+						bnt_printout_validnonce(board, chip, bhash);
+						return 0;
+					}
+					memset(&mrr, 0x00, sizeof(mrr));
+				}
 			}
 		}
 #ifdef DEMO

@@ -29,7 +29,10 @@
 typedef struct {
 	int            nboards;
 	int            nchips;
-	int            ntime;
+	int            ntroll;
+	int            ntimeoffset;
+	int            ntplus;
+	unsigned short nmask;
 	char*          infile;
 	char*          outfile;
 	bool           fast;
@@ -40,12 +43,15 @@ static void print_usage(const char *prog)
 {
 	printf("\nUsage: %s [-b] <nBoards> [-c] <nChips per board> [-rw] <file>\n", 
 			prog);
-	puts("  -b --nboards  number of boards in system. Range(1~4)\n"
-	     "  -c --nchips   number of chips per board. Range(1~64)\n"
-	     "  -f --fast     fast mode (high speed clock)\n"
-	     "  -t --ntime    ntime rolling offset(1,2,3)\n"
-	     "  -r --read     input block header sample file\n"
-	     "  -w --write    write log to file (NYI)\n");
+	puts("  -b --nboards      number of boards in system. Range(1~4)\n"
+	     "  -c --nchips       number of chips per board. Range(1~64)\n"
+	     "  -f --fast         fast mode (high speed clock)\n"
+	     "  -t --ntroll       ntime rolling offset(1,2,3)\n"
+	     "  -o --ntimeoffset  ntime data offset from input blockheader\n"
+	     "  -m --mask         override nonce mask\n"
+	     "  -p --ntplus       ntime rolling plus\n"
+	     "  -r --read         input block header sample file\n"
+	     "  -w --write        write log to file (NYI)\n");
 	exit(1);
 }
 
@@ -53,19 +59,22 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 {
 	while (1) {
 		static const struct option lopts[] = {
-			{ "nboards", 1, 0, 'b' },
-			{ "nchips",  1, 0, 'c' },
-			{ "ntime",   0, 0, 't' },
-			{ "auto",    0, 0, 'a' },
-			{ "fast",    0, 0, 'f' },
-			{ "help",    0, 0, 'h' },
-			{ "read",    1, 0, 'r' },
-			{ "write",   1, 0, 'w' },
-			{ NULL,      0, 0, 0 },
+			{ "nboards",       1, 0, 'b' },
+			{ "nchips",        1, 0, 'c' },
+			{ "ntroll",        1, 0, 'n' },
+			{ "ntimeoffset",   1, 0, 'o' },
+			{ "mask",          1, 0, 'm' },
+			{ "ntplus",        0, 0, 'p' },
+			{ "auto",          0, 0, 'a' },
+			{ "fast",          0, 0, 'f' },
+			{ "help",          0, 0, 'h' },
+			{ "read",          1, 0, 'r' },
+			{ "write",         1, 0, 'w' },
+			{ NULL,            0, 0, 0 },
 		};
 		int c;
 
-		c = getopt_long(argc, argv, "b:c:r:w:t:fah", lopts, NULL);
+		c = getopt_long(argc, argv, "b:c:r:w:t:o:m:fash", lopts, NULL);
 
 		if (c == -1)
 			break;
@@ -80,7 +89,13 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 				info->autodetect = false;
 				break;
 			case 't':
-				info->ntime = atoi(optarg);
+				info->ntroll = atoi(optarg);
+				break;
+			case 'o':
+				info->ntimeoffset = atoi(optarg);
+				break;
+			case 'm':
+				info->nmask = strtol(optarg, NULL, 16);
 				break;
 			case 'a':
 				info->autodetect = true;
@@ -93,6 +108,9 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 				break;
 			case 'f':
 				info->fast = true;
+				break;
+			case 's':
+				info->ntplus = true;
 				break;
 			case 'h':
 			default:
@@ -129,14 +147,14 @@ static int parse_opts(int argc, char *argv[], T_OptInfo* info)
 			break;
 	}
 
-	switch(info->ntime) {
+	switch(info->ntroll) {
 		case 0:
 		case 1:
 		case 2:
 		case 3:
 			break;
 		default:
-			printf("Out of range ntime roll %d\n", info->ntime);
+			printf("Out of range ntime roll %d\n", info->ntroll);
 			print_usage(argv[0]);
 			break;
 	}
@@ -170,10 +188,8 @@ bnt_init(
 	//set GPIO irq
 	//TODO:
 
-	//set Mask
-	handle->mask = bnt_get_nonce_mask(handle->nboards, handle->nchips);
 #ifndef DEMO
-	BNT_INFO(("MASK %03X\n", handle->mask));
+	BNT_INFO(("MASK %03X %s\n", handle->mask, info->nmask ? "(overide)" : ""));
 #endif
 	handle->ssr = handle->mask << I_SSR_MASK;
 	
@@ -189,7 +205,7 @@ bnt_init(
 		if(handle->spifd[i] <= 0) continue;
 
 		//SSR
-		ssr = htons(handle->ssr | (i << I_SSR_BOARDID));
+		ssr = htons(handle->ssr | (i << I_SSR_BOARDID) | ((info->ntplus ? 1 : 0) << I_SSR_PLUSMODE));
 		bnt_write_board(
 				SSR, 
 				&ssr,
@@ -199,7 +215,7 @@ bnt_init(
 				);
 
 		//TSR
-		tsr = htons(info->ntime);
+		tsr = htons(info->ntroll);
 		bnt_write_board(
 				TSR,
 				&tsr,
@@ -235,6 +251,7 @@ bnt_init(
 					SSR,
 					&ssr,
 					sizeof(ssr),
+					false,
 					false
 				   );
 			ssr = ntohs(ssr) & 0xFFF4;
@@ -243,7 +260,7 @@ bnt_init(
 				int retry = 0;
 				do {
 					regwrite(handle->spifd[board], 0, SSR, &ssr, sizeof(ssr), (int)true, false);
-					regread(handle->spifd[board], chip, SSR, &ssr, sizeof(ssr), false);
+					regread(handle->spifd[board], chip, SSR, &ssr, sizeof(ssr), false, false);
 					ssr = ntohs(ssr) & 0xFFF4;
 				} while((ssr != ssr_wr) && (retry++ < 5));
 
@@ -317,7 +334,8 @@ int main(int argc, char *argv[])
 	T_BntHandle handle = {
 		.nboards = info.nboards,
 		.nchips = info.nchips,
-		.ntroll = info.ntime,
+		.ntroll = info.ntroll,
+		.ntrollplus = (int)info.ntplus,
 	};
 
 
@@ -338,8 +356,9 @@ int main(int argc, char *argv[])
 		printf("Open Board %d\n", i);
 	}
 
-	handle.mask = bnt_get_nonce_mask(handle.nboards, handle.nchips);
-	BNT_INFO(("NONCE MASK %03X\n", handle.mask));
+	//set Mask
+	handle.mask = info.nmask ? info.nmask : bnt_get_nonce_mask(handle.nboards, handle.nchips);
+	BNT_INFO(("NONCE MASK %03X %s\n", handle.mask, info.nmask ? "(overide)" : ""));
 	printf("\t--> Press any key to continue...");
 #ifdef DEMO
 	ConsoleInitialize();
@@ -378,9 +397,9 @@ int main(int argc, char *argv[])
 		ret = bnt_get_midstate(&bhash);
 		BNT_CHECK_RESULT(ret, -1);
 		
-		if(info.ntime) {
-			bhash.bh.ntime -= ((1<<info.ntime) - 1);
-			printf("%s: bhash.bh.ntime %08X, info.ntime %d\n", __func__, bhash.bh.ntime, info.ntime);
+		if(info.ntimeoffset) {
+			bhash.bh.ntime -= info.ntimeoffset;
+			printf("%s: bhash.bh.ntime %08X, info.ntroll %d, info.ntimeoffset %d\n", __func__, bhash.bh.ntime, info.ntroll, info.ntimeoffset);
 		}
 		bhash.workid++ == 0xFF ? bhash.workid++ : bhash.workid;
 

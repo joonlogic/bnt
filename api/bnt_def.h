@@ -166,8 +166,10 @@ typedef enum {
 #define V_SSR_SOFTRESET                     1
 #define I_SSR_TESTMODE                      1
 #define V_SSR_TESTMODE                      1
-#define I_SSR_DATABITS                      2
-#define V_SSR_DATABITS                      1
+#define I_SSR_64BITMODE                     2
+#define V_SSR_64BITMODE                     1
+#define I_SSR_PLUSMODE                      3
+#define V_SSR_PLUSMODE                      1
 #define I_SSR_BOARDID                       4
 #define V_SSR_BOARDID                       2
 #define I_SSR_MASK                          6

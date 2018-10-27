@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
 	BNT_CHECK_RESULT(ret, ret);
 
 	//set board range
-	if(info.isbcast && info.iswrite && !info.setboard) {
+	if(info.isbcast && !info.setboard) {
 		cs_start = 0;
 		cs_end = MAX_SPI_CS;
 	} 
@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
 			  info.iswrite ? \
 				  regwrite(fd, info.chipid, info.addr, info.buf, 
 						  nbytes, info.isbcast, info.verbose) :
-				  regread(fd, info.chipid, info.addr, info.buf, nbytes, info.verbose);
+				  regread(fd, info.chipid, info.addr, info.buf, nbytes, info.isbcast, info.verbose);
 
 		printf("[BNT REG %s] Board %d Chip %d %s\n", 
 				info.isregscan ? "REGISTER SCAN" :
@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
 
 		info.isdump ? \
 			printreg(info.buf, ENDOF_BNT_REGISTERS, 0x00) :
-			info.isregscan ? printreg(info.buf, MAX_NCHIPS_PER_BOARD, 0x00) :
+			info.isregscan ? printreg(info.buf, info.nchips, 0x00) :
 				printreg(info.buf, info.count, info.addr);
 		close(fd);
 	} while(csidx++ < cs_end);
