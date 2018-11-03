@@ -100,7 +100,7 @@ regdump(
 	int rxlen = 0;
 
 	access->cmdid = HEADER_FIRST(CMD_READ, CMD_UNICAST, chipid);
-	access->length = HEADER_THIRD(1);
+	access->length = HEADER_THIRD(2);
 	txlen = LENGTH_SPI_MSG(0);
 	rxlen = SIZE_REG_DATA_BYTE + LENGTH_SPI_PADDING_BYTE;
 
@@ -132,7 +132,7 @@ regscan(
 	for(int chipid=0; chipid<nchips; chipid++) {
 		access->cmdid = HEADER_FIRST(CMD_READ, CMD_UNICAST, chipid);
 		access->addr = HEADER_SECOND(chipid, addr);
-		access->length = HEADER_THIRD(1);
+		access->length = HEADER_THIRD(2);
 
 		bnt_spi_tx_rx(fd, txbuf, rxbuf, txlen, rxlen, false); 
 		*(unsigned short*)(buf+(chipid<<1)) = *(unsigned short*)rxbuf;
@@ -162,6 +162,19 @@ regmcast(
 	return 0;
 }
 
+int 
+regmcast2(
+		int fd,
+		bool* mined,
+		unsigned long long mine,
+		bool verbose
+		)
+{
+	regread(fd, 0xFF, MRR0, &mine, sizeof(mine), true, verbose);
+
+	*mined = mine ? true : false;
+	return 0;
+}
 
 void
 bnt_write_all(
@@ -220,12 +233,27 @@ bnt_request_hash(
 	memcpy(hvrs.midstate, hash->midstate, 32);
 	memcpy(&hvrs.merkle, &hash->bh.merkle[28], 12);
 
+#if 1  
 	bnt_write_all(
 			HVR0, 
 			(void*)&hvrs,
 			SIZE_TOTAL_HVR_BYTE,
 			handle
 			);
+#else //temp for test
+	for(int i=0; i<MAX_NBOARDS; i++) {
+		if(handle->spifd[i] <= 0) continue;
+		regwrite(
+				handle->spifd[i],
+				0,
+				HVR0,
+				(void*)&hvrs,
+				SIZE_TOTAL_HVR_BYTE,
+				(int)false,
+				false
+				);
+	}
+#endif
 
 	return 0;
 }
@@ -552,9 +580,12 @@ bnt_test_validnonce_out(
 
 	//check nonce
 	unsigned int realnonce = 0;
+	unsigned char guessbid = 0;
+	unsigned char guesscid = 0;
 	realnonce = bnt_get_realnonce(mrr->nonceout, handle->mask);
+	bnt_get_location(handle->mask, realnonce, &guessbid, &guesscid);
 
-	BNT_INFO(("\n[%d][%02d] FOUND : NONCE %08X (MRR was %08X)\n", board, chip, realnonce, mrr->nonceout));
+	BNT_INFO(("\n[%d][%02d] FOUND : NONCE %08X (MRR was %08X). GUESS[%d][%d]\n", board, chip, realnonce, mrr->nonceout, guessbid, guesscid));
 	bhash->bh.nonce = ntohl(realnonce);
 
 	//consider ntime roll
@@ -677,7 +708,8 @@ void printout_hash_swap(
 int
 bnt_getnonce(
 		T_BntHash* bhash,
-		T_BntHandle* handle
+		T_BntHandle* handle,
+		bool nobreak
 		)
 {
 	//1. Write midstate & block header info to registers 
@@ -690,7 +722,10 @@ bnt_getnonce(
 	int count = 0;
 	int timeout = (THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1));
 	timeout <<= handle->ntroll;
+//	timeout <<= 1; //temp for FPGA 25MHz clock
 
+	//temp
+	timeout += 25; //extra 25 seconds..
 	printf("timeout %d from %d\n", timeout, bnt_get_nchips(handle->mask));
 	do {
 		//check works from Engines
@@ -705,9 +740,7 @@ bnt_getnonce(
 						&mrr.workid
 						);
 
-				if(mrr.workid != bhash->workid) {
-					continue; //means NO results
-				}
+				if(mrr.workid == 0) continue;
 
 				bnt_read_mrr(
 						handle->spifd[board],
@@ -715,7 +748,12 @@ bnt_getnonce(
 						&mrr
 						);
 
-				printf("mrr.workid %d mrr.extraid %d\n", mrr.workid, mrr.extraid);
+				printf("MRR : workid(%d) extraid(%d) - %08X\n", 
+						mrr.workid, mrr.extraid, mrr.nonceout);
+				if(mrr.workid != bhash->workid) {
+					continue; //means NO results
+				}
+
 
 #ifdef DEMO
 				isvalid = bnt_test_validnonce(bhash, &mrr, handle, board, chip);
@@ -725,6 +763,10 @@ bnt_getnonce(
 				if(isvalid) {
 					//found it
 					bnt_printout_validnonce(board, chip, bhash);
+					if(nobreak) {
+						BNT_PRINT(("SLEEPing for %d at no break mode\n", timeout-count));
+						sleep(timeout > count ? timeout - count : 1);
+					}
 					return 0;
 				}
 				memset(&mrr, 0x00, sizeof(mrr));
@@ -771,6 +813,7 @@ bnt_getnonce(
 /*
  * Get nonce from Hardware Engines
  * This is useful only for Chip test..
+ * Use Broadcast Read for finding out mined chip
  */
 int
 bnt_getnonce2(
@@ -946,8 +989,8 @@ bnt_get_realnonce(
 
 	static const unsigned int window_unit[256] = {
 #ifdef FPGA
-		//8 Engines
 		[0x00] = 0xFFFFFFFF,
+		[0x80] = 0x7FFFFFFF,
 		[0xC0] = 0x3FFFFFFF,
 #else
 		[0x00] = 0xFFFFFFFF,
@@ -979,4 +1022,28 @@ bnt_get_realnonce(
 	nonce = (mrr & (~window)) | (nonce & window);
 
 	return nonce; 
+}
+
+void
+bnt_get_location(
+		unsigned short mask,
+		unsigned int nonce,
+		unsigned char* board,
+		unsigned char* chip
+		)
+{
+	unsigned int window;
+	unsigned int boardmask = (unsigned int)(mask >> BITS_CHIPID);
+	unsigned int chipmask = (unsigned int)(mask & 0x00FF);
+	int shift = 
+		boardmask == 0 ? 24 :
+		boardmask == 1 ? 23 : 
+		boardmask == 3 ? 22 :
+		0;
+
+	window = chipmask << shift;
+
+	unsigned char swapped_chipid = (window & nonce) >> shift;
+	*chip = bitswap(swapped_chipid);
+	*board = (nonce >> (shift + BITS_CHIPID)) & boardmask;
 }

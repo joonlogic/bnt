@@ -105,9 +105,9 @@
 #define N_INTERNAL_HASH_ENGINES            8
 #define SHIFT_INTERNAL_HASH_ENGINES        3
 #else
-#define N_INTERNAL_HASH_BLOCKS             16
+#define N_INTERNAL_HASH_BLOCKS             32
 #define N_INTERNAL_HASH_ENGINES            64
-#define SHIFT_INTERNAL_HASH_ENGINES        10     //16 + 64
+#define SHIFT_INTERNAL_HASH_ENGINES        6     
 #endif
 
 /////
@@ -250,6 +250,7 @@ typedef struct {
     //stats
     //works
     //tasks
+    //interrupt gpio
 } T_BntHandle;
 
 typedef struct block_header_p1 {

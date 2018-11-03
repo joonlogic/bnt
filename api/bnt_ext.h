@@ -19,11 +19,12 @@ regread(int fd, int chipid, int regaddr, void* buf, int rdbytes, bool isbcast, b
 regdump(int fd, int chipid, void* buf, bool verbose),
 regscan(int fd, int addr, void* buf, int nchips),
 regmcast(int fd, bool* mined, bool* unique, unsigned char* chipid, bool verbose),
+regmcast2(int fd, bool* mined, unsigned long long mine, bool verbose),
 bnt_spi_open(int bus, int cs),
 bnt_spi_read(int fd, void* buf, int len),
 bnt_spi_write(int fd, void* buf, int len, bool verbose),
 bnt_spi_tx_rx(int fd, unsigned char* txbuf, unsigned char* rxbuf, int txlen, int rxlen, bool verbose),
-bnt_config_gpio_irq(int gpiopin, int);
+bnt_config_gpio_irq(int gpiopin, bool enable);
 
 extern void
 hexdump(const void *src, size_t length, size_t line_size, char *prefix),
@@ -48,7 +49,8 @@ bnt_swap_byte(unsigned char* in, unsigned char* out, int sizebyte);
 extern void
 bnt_write_all(int regaddr, void* buf, int wrbytes, T_BntHandle* handle),
 bnt_write_board(int regaddr, void* buf, int wrbytes, int boardid, T_BntHandle* handle),
-bnt_get_targetstr(unsigned int bits, char* str);
+bnt_get_targetstr(unsigned int bits, char* str),
+bnt_get_location(unsigned short mask, unsigned int nonce, unsigned char* board, unsigned char* chip);
 
 
 extern unsigned short bnt_get_nonce_mask(int nboards, int nchips);
@@ -59,7 +61,7 @@ extern int
 bnt_softreset(int fd, int chipid, bool broadcast),
 bnt_get_id_shift(int nchips),
 bnt_get_midstate(T_BntHash* bhash),
-bnt_getnonce(T_BntHash* bhash, T_BntHandle* handle),
+bnt_getnonce(T_BntHash* bhash, T_BntHandle* handle, bool nobreak),
 bnt_getnonce2(T_BntHash* bhash, T_BntHandle* handle),
 bnt_detect(int* nboards, int* nchips),
 bnt_read_mrr(int fd, int chipid, T_BntHashMRR* mrr),
@@ -71,5 +73,7 @@ extern unsigned int
 bnt_get_realnonce(unsigned int mrr, unsigned short mask),
 bnt_get_bits(unsigned char* hash);
 
+extern unsigned char
+bitswap(unsigned char bits); 
 
 #endif // BNT_EXT_H

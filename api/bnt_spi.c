@@ -136,7 +136,7 @@ bnt_spi_tx_rx(
 int
 bnt_config_gpio_irq(
 		int gpiopin,
-		int disable
+		bool enable
 		)
 {
 	char strgpio[64]={0,};
@@ -148,7 +148,7 @@ bnt_config_gpio_irq(
 	int ret = 0;
 
 	//check unexport
-	if(disable) {
+	if(!enable) {
 		sprintf(strexp, STR_GPIO_SYS STR_GPIO_UNEXPORT);
 		fd = open(strexp, O_WRONLY | O_SYNC);
 		BNT_CHECK_TRUE(fd >= 0, -1);

@@ -215,7 +215,7 @@ int main(int argc, char *argv[])
 				info.isregscan ? "REGISTER SCAN" :
 					info.iswrite ? "WRITE" : "READ", csidx, info.chipid, 
 				info.iswrite ? info.isbcast ? "Broadcast" : "" : 
-					info.isregscan ? "~ 255" : "");
+					info.isregscan ? "~ " : "");
 
 		info.isdump ? \
 			printreg(info.buf, ENDOF_BNT_REGISTERS, 0x00) :

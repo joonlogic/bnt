@@ -25,6 +25,7 @@
 #include "ConsFunc.h"
 #endif
 
+#define USE_INTERRUPT
 #define MAX_FILENAME_STR            128
 typedef struct {
 	int            nboards;
@@ -188,6 +189,12 @@ bnt_init(
 	//set GPIO irq
 	//TODO:
 
+	/*
+	system("raspi-gpio set 5 dl");
+	sleep(1);
+	system("raspi-gpio set 5 dh");
+	*/
+
 #ifndef DEMO
 	BNT_INFO(("MASK %03X %s\n", handle->mask, info->nmask ? "(overide)" : ""));
 #endif
@@ -270,9 +277,6 @@ bnt_init(
 		}
 	}
 
-	//Interrupt enable
-	bnt_set_interrupt(-1, 0, IntAll, true, true, handle);
-
 	return 0;
 }
 
@@ -288,12 +292,17 @@ bnt_close(
 		close(handle->spifd[i]);
 	}
 
+	//GPIO interrupt
+	bnt_config_gpio_irq(17, false);
+	bnt_config_gpio_irq(18, false);
+
 	return 0;
 }
 
 int main(int argc, char *argv[])
 {
 	int ret = 0;
+	bool nobreak = false;
 	time_t ntime, start_time;
 	unsigned int count = 0;
 	unsigned int readlen = 0;
@@ -359,13 +368,29 @@ int main(int argc, char *argv[])
 	//set Mask
 	handle.mask = info.nmask ? info.nmask : bnt_get_nonce_mask(handle.nboards, handle.nchips);
 	BNT_INFO(("NONCE MASK %03X %s\n", handle.mask, info.nmask ? "(overide)" : ""));
-	printf("\t--> Press any key to continue...");
+//	printf("\t--> Press any key to continue...");
 #ifdef DEMO
 	ConsoleInitialize();
 	Plx_getch();
 #else
-	getchar();
+//	getchar();
 #endif
+
+#ifndef USE_BNT_RESET
+	//initialize
+	BNT_PRINT(("BNT SYSTEM  : Aracore-Miner version 1.0.0\n"));
+	BNT_PRINT(("              %-3d Engines Working\n", handle.nboards*handle.nchips*8));
+	BNT_PRINT(("              %-3d FPGA Installed\n", handle.nboards*handle.nchips));
+	BNT_PRINT(("\n"));
+
+	ret = bnt_init(&handle, &info);
+	BNT_CHECK_RESULT(ret, ret);
+	nobreak = true;
+#endif
+
+	//GPIO interrupt
+	bnt_config_gpio_irq(17, true);
+	bnt_config_gpio_irq(18, true);
 
 	//process one by one
 	do {
@@ -382,18 +407,27 @@ int main(int argc, char *argv[])
 			);
 
 #endif
-		//initialize
+
 		ntime = time(NULL);
 		start_time = ntime;
+#ifdef USE_BNT_RESET
+		//initialize
 		BNT_PRINT(("BNT SYSTEM  : Aracore-Miner version 1.0.0\n"));
 		BNT_PRINT(("              %-3d Engines Working\n", handle.nboards*handle.nchips*8));
 		BNT_PRINT(("              %-3d FPGA Installed\n", handle.nboards*handle.nchips));
 		BNT_PRINT(("\n"));
+#endif
 		BNT_PRINT(("[[ %d ]] START %s-------------------------------------------\n", count+1, ctime(&ntime)));
-
+#ifdef USE_BNT_RESET
 		ret = bnt_init(&handle, &info);
 		BNT_CHECK_RESULT(ret, ret);
+#endif
 
+#ifdef USE_INTERRUPT
+		//setting interrupts 
+		bnt_set_interrupt(-1, 0, IntAll, false, true, &handle);
+		bnt_set_interrupt(-1, 0, IntAll, true, true, &handle);
+#endif
 		ret = bnt_get_midstate(&bhash);
 		BNT_CHECK_RESULT(ret, -1);
 		
@@ -414,7 +448,7 @@ int main(int argc, char *argv[])
 		printout_hash(bhash.midstate, "Mid State   ");
 #endif
 
-		ret = bnt_getnonce(&bhash, &handle);
+		ret = bnt_getnonce(&bhash, &handle, nobreak);
 
 		ntime = time(NULL);
 		BNT_PRINT(("[%d] Workid %d Passed ( %ld sec consumed ) : DATE %s \n\n", 
