@@ -166,13 +166,13 @@ int
 regmcast2(
 		int fd,
 		bool* mined,
-		unsigned long long mine,
+		unsigned long long* mine,
 		bool verbose
 		)
 {
-	regread(fd, 0xFF, MRR0, &mine, sizeof(mine), true, verbose);
+	regread(fd, 0xFF, MRR0, mine, sizeof(*mine), true, verbose);
 
-	*mined = mine ? true : false;
+	*mined = *mine ? true : false;
 	return 0;
 }
 
@@ -709,12 +709,15 @@ int
 bnt_getnonce(
 		T_BntHash* bhash,
 		T_BntHandle* handle,
+		bool request,
 		bool nobreak
 		)
 {
 	//1. Write midstate & block header info to registers 
-	bnt_request_hash(bhash, handle); 
-	usleep(100);
+	if(request) {
+		bnt_request_hash(bhash, handle); 
+		usleep(100);
+	}
 
 	//2. Wait & Get results
 	T_BntHashMRR mrr={0,};
@@ -813,7 +816,7 @@ bnt_getnonce(
 /*
  * Get nonce from Hardware Engines
  * This is useful only for Chip test..
- * Use Broadcast Read for finding out mined chip
+ * Use Broadcast Read #1 for finding out mined chip
  */
 int
 bnt_getnonce2(
@@ -837,7 +840,7 @@ bnt_getnonce2(
 	unsigned char minedchip;
 	int chip_s, chip_e;
 
-	printf("timeout %d from %d\n", timeout, bnt_get_nchips(handle->mask));
+	printf("%s: timeout %d from %d\n", __func__, timeout, bnt_get_nchips(handle->mask));
 	do {
 		//check works from Engines
 		for(int board=0; board<MAX_NBOARDS; board++) {
@@ -886,6 +889,114 @@ bnt_getnonce2(
 					memset(&mrr, 0x00, sizeof(mrr));
 				}
 			}
+		}
+#ifdef DEMO
+		if(Cons_kbhit()) {
+			int ch = Cons_getch();
+			if((ch == 27) || (ch == 'p')) {
+				return ch;
+			}
+		}
+		int localcounter = 0;
+		do {
+			usleep(100000); //100ms
+			BNT_PRINT(("MINING IN PROGRESS : %06d\r", count*10 + localcounter)); 
+			fflush(stdout); 
+		} while(localcounter++<10);
+	} while(count++ < (10*THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1)));
+#else
+		sleep(1);
+		if(count%20 == 0) BNT_PRINT(("waiting count %d\n", count));
+	} while(count++ < timeout);
+#endif
+
+	BNT_PRINT(("Timedout. Waiting Count %d\n", count));
+
+	//debug
+	char debugbuf[516] = {0,};
+	for(int board=0; board<MAX_NBOARDS; board++) {
+		if(handle->spifd[board] <= 0) continue;
+		for(int chip=0; chip<handle->nchips; chip++) {
+			regdump(handle->spifd[board], chip, debugbuf, false);
+			printf("[BNT REG %s] Board %d Chip %d %s\n",
+								 "READ", board, chip, "");  
+			printreg(debugbuf, ENDOF_BNT_REGISTERS, 0x00);
+		}
+	}
+	
+	return -1;
+}
+
+/*
+ * Get nonce from Hardware Engines
+ * This is useful only for Chip test..
+ * Use Broadcast Read #0 for finding out mined chip
+ */
+int
+bnt_getnonce3(
+		T_BntHash* bhash,
+		T_BntHandle* handle
+		)
+{
+	//1. Write midstate & block header info to registers 
+	bnt_request_hash(bhash, handle); 
+	usleep(100);
+
+	//2. Wait & Get results
+	T_BntHashMRR mrr={0,};
+	bool isvalid;
+	int count = 0;
+	int timeout = (THRESHOLD_GET_NONCE_COUNT/(handle->mask ? bnt_get_nchips(handle->mask) : 1));
+	timeout <<= handle->ntroll;
+
+	bool ismined;
+	unsigned long long minedchips;
+	int chip;
+
+	printf("%s: timeout %d from %d\n", __func__, timeout, bnt_get_nchips(handle->mask));
+
+	do {
+		//check works from Engines
+		for(int board=0; board<MAX_NBOARDS; board++) {
+			if(handle->spifd[board] <= 0) continue;
+			regmcast2(handle->spifd[board], &ismined, &minedchips, false);
+			if(!ismined) continue;
+
+			chip = 0;
+			do {
+				if(minedchips & (1 << (chip++))) continue;
+
+				bnt_read_workid(
+					handle->spifd[board],
+					chip,
+					&mrr.extraid,
+					&mrr.workid
+				);
+
+				if(mrr.workid != bhash->workid) {
+					continue; //means NO results
+				}
+
+				bnt_read_mrr(
+					handle->spifd[board],
+					chip,
+					&mrr
+					);
+
+				printf("mrr.workid %d mrr.extraid %d\n", mrr.workid, mrr.extraid);
+
+#ifdef DEMO
+				isvalid = bnt_test_validnonce(bhash, &mrr, handle, board, chip);
+#else
+				isvalid = bnt_test_validnonce_out(bhash, &mrr, handle, board, chip);
+#endif
+				if(isvalid) {
+					//found it
+					bnt_printout_validnonce(board, chip, bhash);
+					return 0;
+				}
+				memset(&mrr, 0x00, sizeof(mrr));
+			} while(chip < sizeof(minedchips));
 		}
 #ifdef DEMO
 		if(Cons_kbhit()) {
