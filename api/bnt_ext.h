@@ -33,6 +33,7 @@ printreg(const void *src, size_t count, int addr);
 extern bool 
 bnt_gethash(unsigned char* input, unsigned int length, unsigned char* out),
 bnt_getmidhash(unsigned char* input, unsigned char* out),
+bnt_test_validnonce_out(T_BntHash* bhash, T_BntHashMRR* mrr, T_BntHandle* handle, int board, int chip), 
 hello_there(int fd, int chipid, bool verbose);
 
 extern void 
@@ -61,8 +62,10 @@ extern int
 bnt_softreset(int fd, int chipid, bool broadcast),
 bnt_get_id_shift(int nchips),
 bnt_get_midstate(T_BntHash* bhash),
-bnt_getnonce(T_BntHash* bhash, T_BntHandle* handle, bool nobreak),
+bnt_request_hash(T_BntHash* hash, T_BntHandle* handle), 
+bnt_getnonce(T_BntHash* bhash, T_BntHandle* handle, bool request, bool nobreak),
 bnt_getnonce2(T_BntHash* bhash, T_BntHandle* handle),
+bnt_read_workid(int fd, int chipid, unsigned char* extraid, unsigned char* workid), 
 bnt_detect(int* nboards, int* nchips),
 bnt_read_mrr(int fd, int chipid, T_BntHashMRR* mrr),
 bnt_devscan(int* nboards, int* nchips),

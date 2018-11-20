@@ -203,9 +203,7 @@ bnt_init(
 	system("raspi-gpio set 5 dh");
 	*/
 
-#ifndef DEMO
 	BNT_INFO(("MASK %03X %s\n", handle->mask, info->nmask ? "(overide)" : ""));
-#endif
 	handle->ssr = handle->mask << I_SSR_MASK;
 	
 #if 0
@@ -310,8 +308,6 @@ bnt_close(
 int main(int argc, char *argv[])
 {
 	int ret = 0;
-	bool nobreak = false;
-	bool request = true;
 	time_t ntime, start_time;
 	unsigned int count = 0;
 	unsigned int readlen = 0;
@@ -324,19 +320,8 @@ int main(int argc, char *argv[])
 		.outfile = outfile,
 		.autodetect = true,
 	};
-
-#ifdef DEMO
-	char strstatus[32] = {0,};
-	char strtime[32] = {0,};
-	char strtarget[65] = {0,};
-	T_BNT_WEBHANDLE notihandle = {
-		.status = strstatus,
-		.time = strtime,
-		.target = strtarget,
-	};
-
-	bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);
-#endif
+	char regbuf[256] = {0,};
+	bool mined[300] = {0,};
 
 	if(argc == 1) print_usage(argv[0]);
 
@@ -357,7 +342,8 @@ int main(int argc, char *argv[])
 	};
 
 
-	T_BntHash bhash = {0,};
+	T_BntHash bhash[256] = {0,}; //MAX 256 test sets
+	T_BntHash* pbh;
 
 	//open input blockheader file
 	handle.bhfp = fopen(info.infile, "r");
@@ -377,15 +363,9 @@ int main(int argc, char *argv[])
 	//set Mask
 	handle.mask = info.nmask ? info.nmask : bnt_get_nonce_mask(handle.nboards, handle.nchips);
 	BNT_INFO(("NONCE MASK %03X %s\n", handle.mask, info.nmask ? "(overide)" : ""));
-//	printf("\t--> Press any key to continue...");
-#ifdef DEMO
-	ConsoleInitialize();
-	Plx_getch();
-#else
-//	getchar();
-#endif
+	printf("\t--> Press any key to continue...");
+	getchar();
 
-#ifndef USE_BNT_RESET
 	//initialize
 	BNT_PRINT(("BNT SYSTEM  : Aracore-Miner version 1.0.0\n"));
 	BNT_PRINT(("              %-3d Engines Working\n", handle.nboards*handle.nchips*8));
@@ -394,103 +374,95 @@ int main(int argc, char *argv[])
 
 	ret = bnt_init(&handle, &info);
 	BNT_CHECK_RESULT(ret, ret);
-	nobreak = true;
-#endif
 
+#ifdef USE_INTERRUPT
 	//GPIO interrupt
 	bnt_config_gpio_irq(17, true);
 	bnt_config_gpio_irq(18, true);
+#endif
 
-	//process one by one
+	unsigned char workid = 0;
+
 	do {
-		readlen = fread((void*)&bhash.bh, sizeof(bhash.bh), 1, handle.bhfp);
+		pbh = &bhash[++workid];
+		readlen = fread((void*)&pbh->bh, sizeof(pbh->bh), 1, handle.bhfp);
 		if(readlen <= 0) break;
 
-#ifdef DEMO
-		//Ready
-		Cons_clear();
-		Cons_printf(
-			"\n\n"
-			"\t\t        BNT Test Application for mining \n"
-			"\t\t                Sep 2018\n\n"
-			);
-
-#endif
-
-		ntime = time(NULL);
-		start_time = ntime;
-#ifdef USE_BNT_RESET
-		//initialize
-		BNT_PRINT(("BNT SYSTEM  : Aracore-Miner version 1.0.0\n"));
-		BNT_PRINT(("              %-3d Engines Working\n", handle.nboards*handle.nchips*8));
-		BNT_PRINT(("              %-3d FPGA Installed\n", handle.nboards*handle.nchips));
-		BNT_PRINT(("\n"));
-#endif
-		BNT_PRINT(("[[ %d ]] START %s-------------------------------------------\n", count+1, ctime(&ntime)));
-#ifdef USE_BNT_RESET
-		ret = bnt_init(&handle, &info);
-		BNT_CHECK_RESULT(ret, ret);
-#endif
-
-#ifdef USE_INTERRUPT
-		//setting interrupts 
-		bnt_set_interrupt(-1, 0, IntAll, false, true, &handle);
-		bnt_set_interrupt(-1, 0, IntAll, true, true, &handle);
-#endif
-		ret = bnt_get_midstate(&bhash);
+		pbh->workid = workid;
+		ret = bnt_get_midstate(pbh);
 		BNT_CHECK_RESULT(ret, -1);
-		
+
 		if(info.ntimeoffset) {
-			bhash.bh.ntime -= info.ntimeoffset;
-			printf("%s: bhash.bh.ntime %08X, info.ntroll %d, info.ntimeoffset %d\n", __func__, bhash.bh.ntime, info.ntroll, info.ntimeoffset);
+			pbh->bh.ntime -= info.ntimeoffset;
+			printf("%s: pbh->bh.ntime %08X, info.ntroll %d, info.ntimeoffset %d\n", __func__, pbh->bh.ntime, info.ntroll, info.ntimeoffset);
 		}
-		bhash.workid++ == 0xFF ? bhash.workid++ : bhash.workid;
-
-#ifdef DEMO
-		memset(notihandle.target, 0x00, 65);
-		bnt_get_targetstr(bhash.bh.bits, notihandle.target);
-		bnt_set_status_noti_web(&notihandle, "mining", bhash.workid, ctime(&ntime), 0);
-		printout_bh(&bhash.bh);
-
-#else
-		printout_bh(&bhash.bh);
-		printout_hash(bhash.midstate, "Mid State   ");
-#endif
-
-		ret = bnt_getnonce(&bhash, &handle, request, nobreak);
 
 		ntime = time(NULL);
-		BNT_PRINT(("[%d] Workid %d Passed ( %ld sec consumed ) : DATE %s \n\n", 
-				count+1, bhash.workid, ntime - start_time, ctime(&ntime)));
-		count++;
+		BNT_PRINT(("[[ %d ]] WorkId (%d) REQUEST %s-------------------------------------------\n", \
+					count, pbh->workid, ctime(&ntime)));
+		printout_bh(&pbh->bh);
+		printout_hash(pbh->midstate, "Mid State   ");
 
-#ifdef DEMO
-		if((ret == 27) || (ret == 'p')){ //ESC or 'p'
-			if(ret == 27) {
-				BNT_PRINT(("BYE--------------------------------\n\n"));
-				break;
-			}
-			else if(ret == 'p') {
-				bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);
-				printf("\t--> Press any key to continue...");
-				Plx_getch();
+		bnt_request_hash(pbh, &handle);
+
+		//register dump for just board 0 chip 0
+		regdump(handle.spifd[0], 0, regbuf, false);
+		printf("[BNT REG %s] Board %d Chip %d %s\n", "READ", 0, 0, "");
+		printreg(regbuf, ENDOF_BNT_REGISTERS, 0x00);
+
+	} while(count++<255);
+
+	BNT_PRINT(("/////////////////////////////////////////////\n"));
+	BNT_PRINT(("All Data Requested %d\n", pbh->workid));
+	BNT_PRINT(("/////////////////////////////////////////////\n"));
+
+	bool isvalid;
+	T_BntHashMRR mrr={0,};
+
+	ntime = time(NULL);
+	start_time = ntime;
+	BNT_PRINT(("Mining Start %s-------------------------------------------\n", ctime(&ntime)));
+
+	do {
+		for(int board=0; board<handle.nboards; board++) {
+			for(int chip=0; chip<handle.nchips; chip++) {
+				bnt_read_workid(
+						handle.spifd[board],
+						chip,
+						&mrr.extraid,
+						&mrr.workid
+						);
+				if(mrr.workid == 0) continue;
+
+				bnt_read_mrr(
+						handle.spifd[board],
+						chip,
+						&mrr
+						);
+				printf("MRR : workid(%d) extraid(%d) - %08X\n",
+						mrr.workid, mrr.extraid, mrr.nonceout);
+				if(mined[mrr.workid] == true) continue;
+
+				pbh = &bhash[mrr.workid];
+				isvalid = bnt_test_validnonce_out(pbh, &mrr, &handle, board, chip);
+				if(isvalid) {
+					//found it
+					bnt_printout_validnonce(board, chip, pbh);
+					mined[mrr.workid] = true;
+				}
 			}
 		}
-		else {
-			bnt_set_status_noti_web(&notihandle, "mined", bhash.workid, ctime(&ntime), bhash.bh.nonce);
+		sleep(1);
+	} while(!mined[255]);
 
-			sleep(10);
+	ntime = time(NULL);
+	BNT_PRINT(("[Mining Done] ( %ld sec waited ) : DATE %s \n\n", 
+			ntime - start_time, ctime(&ntime)));
 
-			//ready for 10 secondes...
-			bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);
-			sleep(10);
-		}
-#endif
-	} while(1);
+	for(int i=1; i<256; i++) {
+		BNT_PRINT(("MINED[%d] = %s\n", i, mined[i] ? "OK" : "MISSED"));
+	}
 
-#ifdef DEMO
-	bnt_set_status_noti_web(&notihandle, "ready", 0, 0, 0);
-#endif
 	bnt_close(&handle);
 
 	return ret;

@@ -709,12 +709,15 @@ int
 bnt_getnonce(
 		T_BntHash* bhash,
 		T_BntHandle* handle,
+		bool request,
 		bool nobreak
 		)
 {
 	//1. Write midstate & block header info to registers 
-	bnt_request_hash(bhash, handle); 
-	usleep(100);
+	if(request) {
+		bnt_request_hash(bhash, handle); 
+		usleep(100);
+	}
 
 	//2. Wait & Get results
 	T_BntHashMRR mrr={0,};

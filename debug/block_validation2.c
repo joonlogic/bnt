@@ -48,14 +48,12 @@ int main()
 #endif
 
 #if 1
-	char* sin = "01000000"
-		"dc79a6581c26dc78968b499c96dc2527869e3534e088444bf94d000000000000"
-		"50add7b80e07307ceedaa4d98f8057e035368419776be0f1aab9fb11dfb11b27"
-//		"c7c7cb4d"
-		"c8c7cb4d"
-		"b3936a1a"
-//		"5CD1C486"; //BH 123455 TEST
-		"C50646E2"; //BH 123455
+	char* sin = "03000000"
+		"d7ee7e48c9ddfd9da91c1fc73403aa3ce47a7e6a1515bf000000000000000000"
+		"815a7e07531e40c34bab60ae08d86d55dbdbed19350361507eb77307d57b129d"
+		"47E4A755"
+		"C1861518"
+		"06CA4850"; 
 #endif
 
 	unsigned char hashout[SHA256_DIGEST_LENGTH]={0,};

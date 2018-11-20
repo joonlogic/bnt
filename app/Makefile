@@ -6,6 +6,7 @@ CC = gcc -g
 TARGET =  bnt_access
 TARGET += bnt_gpioint
 TARGET += bnt_getnonce
+TARGET += bnt_getnonce2
 TARGET += bnt_gethash
 TARGET += bnt_reset
 TARGET += bnt_chktime
@@ -41,6 +42,9 @@ bnt_gpioint: bnt_gpioint.c $(BNT_LIB)
 	$(CC) -Wall $(CFLAGS) $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
 
 bnt_getnonce: bnt_getnonce.c $(BNT_LIB)
+	$(CC) -Wall $(CFLAGS) $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
+
+bnt_getnonce2: bnt_getnonce2.c $(BNT_LIB)
 	$(CC) -Wall $(CFLAGS) $< $(BNT_LIB) $(LFLAGS) $(BNT_INC) -o $@
 
 bnt_gethash: bnt_gethash.c $(BNT_LIB)
